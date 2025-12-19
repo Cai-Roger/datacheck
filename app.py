@@ -25,7 +25,7 @@ if logo_path.exists():
     logo = Image.open(logo_path)
     st.image(logo, width=180)
 
-st.title("Excel比對程式Web V2.0正式版")
+st.title("Excel 比對程式Web V2.0正式版")
 
 st.markdown("""
 **使用說明**
