@@ -19,12 +19,10 @@ from PIL import Image
 from pathlib import Path
 import streamlit as st
 
-LOGO_PATH = Path(__file__).parent / "logp.png"  # ← 注意這裡是 logp.png
+LOGO_PATH = Path(__file__).parent / "logp.png"
 
-if LOGO_PATH.exists():
-    st.image(open(LOGO_PATH, "rb"), width=180)
-else:
-    st.warning(f"找不到 logo 檔案：{LOGO_PATH}")
+img = Image.open(LOGO_PATH)
+st.image(img, width=180)
 
 st.title("Excel 比對程式Web V2.0正式版")
 
