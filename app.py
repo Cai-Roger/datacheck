@@ -16,13 +16,15 @@ st.set_page_config(
     layout="wide"
 )
 from PIL import Image
-import streamlit as st
 from pathlib import Path
+import streamlit as st
 
-# 取得 logo 路徑（避免部署路徑問題）
-LOGO_PATH = Path(__file__).parent / "logo.png"
+LOGO_PATH = Path(__file__).parent / "logp.png"  # ← 注意這裡是 logp.png
 
-st.image(str(LOGO_PATH), width=180)
+if LOGO_PATH.exists():
+    st.image(open(LOGO_PATH, "rb"), width=180)
+else:
+    st.warning(f"找不到 logo 檔案：{LOGO_PATH}")
 
 st.title("Excel 比對程式Web V2.0正式版")
 
