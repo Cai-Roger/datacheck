@@ -131,26 +131,33 @@ if st.button("🟢開始差異比對🟢", type="primary"):
     )
 import streamlit as st
 
-FOOTER_HTML = """
-<style>
-.footer {
-    position: fixed;
-    left: 0;
-    bottom: 0;
-    width: 100%;
-    background-color: #1f2937;
-    color: #e5e7eb;
-    text-align: center;
-    padding: 8px 0;
-    font-size: 13px;
-    border-top: 1px solid #374151;
-    z-index: 999;
-}
-</style>
+st.markdown(
+    """
+    <style>
+    /* 預留底部空間，避免內容蓋住 footer */
+    .block-container {
+        padding-bottom: 60px;
+    }
 
-<div class="footer">
-    © 2025 Cai-Roger ｜ DataCheck Tool ｜ V2.0
-</div>
-"""
+    /* Footer 樣式 */
+    .app-footer {
+        position: fixed;
+        left: 0;
+        bottom: 0;
+        width: 100%;
+        background-color: #f5f6f7;
+        color: #555;
+        text-align: center;
+        padding: 10px 0;
+        font-size: 13px;
+        border-top: 1px solid #e0e0e0;
+        z-index: 1000;
+    }
+    </style>
 
-st.markdown(FOOTER_HTML, unsafe_allow_html=True)
+    <div class="app-footer">
+        © 2025 Cai-Roger ｜ DataCheck Tool ｜ v1.0
+    </div>
+    """,
+    unsafe_allow_html=True
+)
