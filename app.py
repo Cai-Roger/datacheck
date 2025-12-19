@@ -2,6 +2,8 @@ import streamlit as st
 import pandas as pd
 from io import BytesIO
 import time
+import streamlit as st
+import streamlit.components.v1 as components
 
 from compare_core import (
     clean_header_name,
@@ -129,35 +131,33 @@ if st.button("🟢開始差異比對🟢", type="primary"):
         file_name="Excel差異比對結果.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
-import streamlit as st
 
-st.markdown(
+components.html(
     """
     <style>
-    /* 預留底部空間，避免內容蓋住 footer */
-    .block-container {
-        padding-bottom: 60px;
-    }
+      /* 預留底部空間，避免內容被 footer 擋住 */
+      [data-testid="stMainBlockContainer"] {
+          padding-bottom: 60px;
+      }
 
-    /* Footer 樣式 */
-    .app-footer {
-        position: fixed;
-        left: 0;
-        bottom: 0;
-        width: 100%;
-        background-color: #f5f6f7;
-        color: #555;
-        text-align: center;
-        padding: 10px 0;
-        font-size: 13px;
-        border-top: 1px solid #e0e0e0;
-        z-index: 1000;
-    }
+      .app-footer {
+          position: fixed;
+          left: 0;
+          bottom: 0;
+          width: 100%;
+          background-color: #f5f6f7;
+          color: #555;
+          text-align: center;
+          padding: 10px 0;
+          font-size: 13px;
+          border-top: 1px solid #e0e0e0;
+          z-index: 9999;
+      }
     </style>
 
     <div class="app-footer">
-        © 2025 Cai-Roger ｜Excel 比對程式｜ V2.0
+        © 2025 Cai-Roger ｜ Excel 比對程式 ｜ V2.0
     </div>
     """,
-    unsafe_allow_html=True
+    height=0,   /* 重點：不佔內容高度 */
 )
