@@ -4,6 +4,7 @@ from io import BytesIO
 import time
 import streamlit.components.v1 as components
 from datetime import datetime
+from zoneinfo import ZoneInfo
 
 from compare_core import (
     clean_header_name,
@@ -35,9 +36,16 @@ st.markdown("""
 # =========================
 # 檔名產生器（年月日＋時間＋流水）
 # =========================
-def gen_download_filename(base_name: str, suffix="", ext="xlsx"):
-    ts = datetime.now().strftime("%Y%m%d_%H%M%S")
-    seq = int(time.time() * 1000) % 1000  # 流水號
+def gen_download_filename(base_name: str, suffix="compare", ext="xlsx"):
+    """
+    檔名時間使用台灣時間（Asia/Taipei）
+    例：xxx_compare_20250109_162355_123.xlsx
+    """
+    tw_tz = ZoneInfo("Asia/Taipei")
+    now_tw = datetime.now(tw_tz)
+
+    ts = now_tw.strftime("%Y%m%d_%H%M%S")
+    seq = int(time.time() * 1000) % 1000  # 流水號（避免同秒重複）
     return f"{base_name}_{suffix}_{ts}_{seq:03d}.{ext}"
 
 # =========================
