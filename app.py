@@ -62,18 +62,7 @@ if not file_a or not file_b:
     st.stop()
 
 df_a = pd.read_excel(file_a)
-if not file_bs:
-    st.info("請至少上傳一份 Excel B")
-    st.stop()
-
-df_b_list = []
-
-for f in file_bs:
-    df_tmp = pd.read_excel(f)
-    df_tmp["__SOURCE_FILE__"] = f.name  # 記錄來源檔名（加分）
-    df_b_list.append(df_tmp)
-
-df_b = pd.concat(df_b_list, ignore_index=True, sort=False)
+df_b = pd.read_excel(file_b)
 
 st.success(f"Excel A：{df_a.shape} ｜ Excel B：{df_b.shape}")
 
