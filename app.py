@@ -61,7 +61,7 @@ st.subheader("🔑Key欄位設定")
 cols = list(df_a.columns)
 default_keys = [c for c in cols if clean_header_name(c) in {"PLNNR", "VORNR"}]
 if not default_keys:
-    default_keys = cols[:２]
+    default_keys = cols[:2]
 
 selected_keys = st.multiselect(
     "選擇 Key 欄位（可多選）",
