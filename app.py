@@ -131,7 +131,7 @@ if st.button("🟢開始差異比對🟢", type="primary"):
         file_name="Excel差異比對結果.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
-
+import streamlit.components.v1 as components
 components.html(
     """
     <style>
