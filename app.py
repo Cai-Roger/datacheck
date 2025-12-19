@@ -21,7 +21,7 @@ st.title("📊 Excel 差異比對工具（Web 版）")
 st.markdown("""
 **使用方式**
 1. 上傳 Excel A、Excel B  
-2. 勾選 Key 欄位（支援多 Key，VORNR 會自動補 4 碼）  
+2. 勾選 Key 欄位（支援多 Key）
 3. 下載差異比對結果
 """)
 
