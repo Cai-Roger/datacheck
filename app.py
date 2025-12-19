@@ -20,7 +20,7 @@ import streamlit as st
 from pathlib import Path
 
 # Logo
-logo_path = Path("assets/logo.png")
+logo_path = Path("logo.png")
 if logo_path.exists():
     logo = Image.open(logo_path)
     st.image(logo, width=180)
