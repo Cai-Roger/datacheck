@@ -149,7 +149,7 @@ FOOTER_HTML = """
 </style>
 
 <div class="footer">
-    © 2025 Cai-Roger ｜ DataCheck Tool ｜ v1.0
+    © 2025 Cai-Roger ｜ DataCheck Tool ｜ V2.0
 </div>
 """
 
