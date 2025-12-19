@@ -166,34 +166,6 @@ if output and download_filename:
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
 
-# =========================
-# Footer（固定頁底）
-# =========================
-components.html(
-    """
-    <style>
-      [data-testid="stMainBlockContainer"] {
-          padding-bottom: 60px;
-      }
+from footer import render_footer
 
-      .app-footer {
-          position: fixed;
-          left: 0;
-          bottom: 0;
-          width: 100%;
-          background-color: #f5f6f7;
-          color: #555;
-          text-align: center;
-          padding: 10px 0;
-          font-size: 13px;
-          border-top: 1px solid #e0e0e0;
-          z-index: 9999;
-      }
-    </style>
-
-    <div class="app-footer">
-        © 2025 Cai-Roger ｜ Excel 比對程式 ｜ V2.0
-    </div>
-    """,
-    height=0
-)
+render_footer()
