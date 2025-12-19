@@ -156,7 +156,7 @@ st.markdown(
     </style>
 
     <div class="app-footer">
-        © 2025 Cai-Roger ｜ DataCheck Tool ｜ v1.0
+        © 2025 Cai-Roger ｜Excel 比對程式｜ V2.0
     </div>
     """,
     unsafe_allow_html=True
