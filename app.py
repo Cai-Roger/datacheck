@@ -18,11 +18,11 @@ from compare_core import (
 # Page config
 # =========================
 st.set_page_config(
-    page_title="QQ資料製作小組｜Excel 比對程式 V2.0",
+    page_title="QQ資料製作小組｜Excel 比對程式",
     layout="wide"
 )
 
-st.title("Excel 比對程式（Web V2.0 正式版）")
+st.title("Excel 比對程式（Web V2.1.2 正式版）")
 
 st.markdown("""
 ***使用說明***
