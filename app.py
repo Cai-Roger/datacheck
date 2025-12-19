@@ -20,7 +20,7 @@ st.set_page_config(
 st.title("Excel 比對程式Web V2.0正式版")
 
 st.markdown("""
-**使用說明**
+***使用說明:***
 1. 上傳 Excel A、Excel B  
 2. 勾選 Key 欄位（支援多 Key）
 3. 下載差異比對結果
