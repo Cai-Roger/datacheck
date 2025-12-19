@@ -129,3 +129,28 @@ if st.button("🟢開始差異比對🟢", type="primary"):
         file_name="Excel差異比對結果.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
+import streamlit as st
+
+FOOTER_HTML = """
+<style>
+.footer {
+    position: fixed;
+    left: 0;
+    bottom: 0;
+    width: 100%;
+    background-color: #f5f6f7;
+    color: #555;
+    text-align: center;
+    padding: 8px 0;
+    font-size: 13px;
+    border-top: 1px solid #e0e0e0;
+    z-index: 999;
+}
+</style>
+
+<div class="footer">
+    © 2025 Cai-Roger ｜ DataCheck Tool ｜ v1.0
+</div>
+"""
+
+st.markdown(FOOTER_HTML, unsafe_allow_html=True)
