@@ -138,12 +138,12 @@ FOOTER_HTML = """
     left: 0;
     bottom: 0;
     width: 100%;
-    background-color: #f5f6f7;
-    color: #555;
+    background-color: #1f2937;
+    color: #e5e7eb;
     text-align: center;
     padding: 8px 0;
     font-size: 13px;
-    border-top: 1px solid #e0e0e0;
+    border-top: 1px solid #374151;
     z-index: 999;
 }
 </style>
