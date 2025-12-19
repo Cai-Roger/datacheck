@@ -135,7 +135,6 @@ if st.button("🟢開始差異比對🟢", type="primary"):
 components.html(
     """
     <style>
-      /* 預留底部空間，避免內容被 footer 擋住 */
       [data-testid="stMainBlockContainer"] {
           padding-bottom: 60px;
       }
@@ -159,5 +158,5 @@ components.html(
         © 2025 Cai-Roger ｜ Excel 比對程式 ｜ V2.0
     </div>
     """,
-    height=0,   /* 重點：不佔內容高度 */
+    height=0,
 )
