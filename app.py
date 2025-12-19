@@ -19,7 +19,7 @@ st.set_page_config(
 )
 
 
-st.title("Excel 比對程式Web V2.0正式版")
+st.title("Excel 比對程式（Web V2.0正式版）")
 
 st.markdown("""
 ***使用說明:***
