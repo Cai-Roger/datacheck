@@ -12,9 +12,18 @@ from compare_core import (
 )
 
 st.set_page_config(
-    page_title="Excel 差異比對工具",
+    page_title="公司名稱｜Excel 差異比對工具",
     layout="wide"
 )
+from PIL import Image
+import streamlit as st
+from pathlib import Path
+
+# Logo
+logo_path = Path("assets/logo.png")
+if logo_path.exists():
+    logo = Image.open(logo_path)
+    st.image(logo, width=180)
 
 st.title("📊 Excel 差異比對工具（Web 版）")
 
