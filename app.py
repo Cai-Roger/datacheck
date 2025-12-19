@@ -4,6 +4,8 @@ from io import BytesIO
 import time
 import streamlit as st
 import streamlit.components.v1 as components
+from datetime import datetime
+from pathlib import Path
 
 from compare_core import (
     clean_header_name,
@@ -12,6 +14,15 @@ from compare_core import (
     diff_directional,
     build_column_diff
 )
+
+def gen_download_filename(base_name: str, suffix: str = "result", ext="xlsx"):
+    """
+    產生：baseName_suffix_YYYYMMDD_HHMMSS_流水號.xlsx
+    （Streamlit download_button 用，不寫入檔案）
+    """
+    ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+    counter = int(time.time() * 1000) % 1000  # 簡易流水（避免同秒重複）
+    return f"{base_name}_{suffix}_{ts}_{counter:03d}.{ext}"
 
 st.set_page_config(
     page_title="QQ資料製作小組｜Excel 比對程式V2.0正式版",
@@ -125,12 +136,17 @@ if st.button("🟢開始差異比對🟢", type="primary"):
 
     st.success(f"比對完成（耗時 {duration} 秒）")
 
-    st.download_button(
-        "📥 下載差異比對結果 Excel",
-        data=output.getvalue(),
-        file_name="Excel差異比對結果.xlsx",
-        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-    )
+download_filename = gen_download_filename(
+    base_name="Excel差異比對結果",
+    suffix="compare"
+)
+
+st.download_button(
+    "📥 下載差異比對結果 Excel",
+    data=output.getvalue(),
+    file_name=download_filename,
+    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+)
 import streamlit.components.v1 as components
 components.html(
     """
