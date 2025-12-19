@@ -21,7 +21,7 @@ import streamlit as st
 LOGO_PATH = Path(__file__).parent / "logp.png"
 
 if LOGO_PATH.exists():
-    st.image(LOGO_PATH.read_bytes(), width=160)
+    st.image(LOGO_PATH.read_bytes(), width=300)
 else:
     st.warning("Logo 圖片不存在")
 
