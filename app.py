@@ -15,15 +15,7 @@ st.set_page_config(
     page_title="QQ資料製作小組｜Excel 比對程式V2.0正式版",
     layout="wide"
 )
-from pathlib import Path
-import streamlit as st
 
-LOGO_PATH = Path(__file__).parent / "logp.png"
-
-if LOGO_PATH.exists():
-    st.image(LOGO_PATH.read_bytes(), width=30)
-else:
-    st.warning("Logo 圖片不存在")
 
 st.title("Excel 比對程式Web V2.0正式版")
 
