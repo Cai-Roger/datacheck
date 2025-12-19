@@ -24,7 +24,7 @@ st.set_page_config(
 st.title("Excel 比對程式（Web V2.0 正式版）")
 
 st.markdown("""
-**使用說明**
+***使用說明***
 1. 上傳 Excel A、Excel B  
 2. 勾選 Key 欄位（可多 Key）  
 3. 執行比對後下載結果  
@@ -93,7 +93,7 @@ output = None
 download_filename = None
 
 if st.button("🟢 開始差異比對", type="primary"):
-    with st.spinner("比對中，請稍候..."):
+    with st.spinner("資料比對中，請稍候..."):
         t0 = time.time()
 
         map_a = build_key_map(df_a, key_cols_a)
@@ -142,7 +142,7 @@ if st.button("🟢 開始差異比對", type="primary"):
 
         key_part = "+".join(selected_keys)
         download_filename = gen_download_filename(
-            base_name=f"Excel差異比對結果_{key_part}"
+            base_name=f"Excel差異比對結果"
         )
 
     st.success(f"比對完成（耗時 {duration} 秒）")
