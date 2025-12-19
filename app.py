@@ -12,7 +12,7 @@ from compare_core import (
 )
 
 st.set_page_config(
-    page_title="公司名稱｜Excel 差異比對工具",
+    page_title="QQ資料製作小組｜Excel 比對程式V2.0正式版",
     layout="wide"
 )
 from PIL import Image
@@ -25,13 +25,14 @@ if logo_path.exists():
     logo = Image.open(logo_path)
     st.image(logo, width=180)
 
-st.title("📊 Excel 差異比對工具（Web 版）")
+st.title("Excel比對程式Web V2.0正式版")
 
 st.markdown("""
-**使用方式**
+**使用說明**
 1. 上傳 Excel A、Excel B  
 2. 勾選 Key 欄位（支援多 Key）
 3. 下載差異比對結果
+⚠️使用前請將兩份文檔表頭名稱統一
 """)
 
 # =========================
@@ -55,12 +56,12 @@ st.success(f"Excel A：{df_a.shape} | Excel B：{df_b.shape}")
 # =========================
 # Key 勾選
 # =========================
-st.subheader("🔑 Key 欄位設定")
+st.subheader("🔑Key欄位設定")
 
 cols = list(df_a.columns)
 default_keys = [c for c in cols if clean_header_name(c) in {"PLNNR", "VORNR"}]
 if not default_keys:
-    default_keys = cols[:2]
+    default_keys = cols[:２]
 
 selected_keys = st.multiselect(
     "選擇 Key 欄位（可多選）",
@@ -83,7 +84,7 @@ key_cols_b = [df_b.columns.get_loc(k) for k in selected_keys]
 # =========================
 # 執行比對
 # =========================
-if st.button("🚀 開始差異比對", type="primary"):
+if st.button("🟢開始差異比對🟢", type="primary"):
     with st.spinner("比對中，請稍候..."):
         t0 = time.time()
 
