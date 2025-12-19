@@ -92,7 +92,7 @@ key_cols_b = [df_b.columns.get_loc(k) for k in selected_keys]
 output = None
 download_filename = None
 
-if st.button("🟢 開始差異比對", type="primary"):
+if st.button("🟢 開始差異比對 🟢 ", type="primary"):
     with st.spinner("資料比對中，請稍候..."):
         t0 = time.time()
 
