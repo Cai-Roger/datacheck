@@ -35,7 +35,7 @@ st.markdown("""
 # =========================
 # 檔名產生器（年月日＋時間＋流水）
 # =========================
-def gen_download_filename(base_name: str, suffix="compare", ext="xlsx"):
+def gen_download_filename(base_name: str, suffix="", ext="xlsx"):
     ts = datetime.now().strftime("%Y%m%d_%H%M%S")
     seq = int(time.time() * 1000) % 1000  # 流水號
     return f"{base_name}_{suffix}_{ts}_{seq:03d}.{ext}"
