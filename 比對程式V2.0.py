@@ -1,9 +1,7 @@
 import pandas as pd
 import os
 import re
-import customtkinter as ctk
-from tkinter import filedialog, messagebox, Toplevel, Text, Scrollbar, RIGHT, Y
-from tkinter.ttk import Progressbar
+import streamlit as st
 import traceback
 import time
 
