@@ -79,7 +79,7 @@ with st.sidebar:
 # =========================================================
 # 主畫面
 # =========================================================
-st.title("👤 管理者頁面｜回饋管理")
+st.title("回饋管理")
 
 DATA_DIR = Path("data")
 FEEDBACK_XLSX = DATA_DIR / "feedback.xlsx"
@@ -109,7 +109,7 @@ col2.metric("🟢 已處理", int((df["status"] == "已處理").sum()))
 col3.metric("🔴 未處理", int((df["status"] == "未處理").sum()))
 
 if "app_version" in df.columns:
-    st.subheader("📊 版本分布")
+    st.subheader("版本分布")
     st.bar_chart(df["app_version"].value_counts())
 
 st.markdown("---")
