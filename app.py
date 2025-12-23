@@ -47,7 +47,7 @@ def check_password():
             st.warning("⏰ 登入逾時，請重新登入")
             return False
 
-        # 更新最後活動時間（任何 rerun 都算）
+        # 每次 rerun 都視為一次活動
         st.session_state.last_active_ts = now
         return True
 
@@ -67,7 +67,7 @@ def check_password():
     return False
 
 
-# ❗ 未登入或已逾時，整個程式停止
+# ❗ 未登入或已逾時，整個程式停止在登入頁
 if not check_password():
     st.stop()
 
@@ -75,12 +75,14 @@ if not check_password():
 # Sidebar：登入狀態 / 剩餘時間 / 延長登入
 # =========================================================
 with st.sidebar:
+    # ⏱ 每秒自動刷新（讓剩餘時間會動）
+    st.autorefresh(interval=1000, key="session_timer")
+
     st.markdown("### 🟢 登入狀態")
 
     now = time.time()
     remaining = SESSION_TIMEOUT_SECONDS - (now - st.session_state.last_active_ts)
     remaining = max(0, int(remaining))
-
     mins, secs = divmod(remaining, 60)
 
     st.info(f"⏳ 剩餘時間：**{mins:02d}:{secs:02d}**")
@@ -98,7 +100,7 @@ with st.sidebar:
 # =========================================================
 # 主畫面
 # =========================================================
-st.title("Excel 比對程式（Web V2.1.3 正式版）")
+st.title("Excel 比對程式（Web V3.0.1 正式版）")
 
 st.markdown("""
 ### 使用說明
@@ -222,7 +224,6 @@ else:
                 df_b_to_a.to_excel(writer, "B_to_A", index=False)
 
             duration = round(time.time() - t0, 2)
-
             download_filename = gen_download_filename("Excel差異比對結果")
 
         st.success(f"比對完成（耗時 {duration} 秒）")
@@ -251,7 +252,7 @@ st.markdown(
         color:#666;
         border-top:1px solid #e0e0e0;
     ">
-        © 2025 Roger＆Andy with GPT ｜ QQ資料製作小組 ｜ V2.1.3
+        © 2025 Roger＆Andy with GPT ｜ QQ資料製作小組 ｜ V3.0.1
     </div>
     """,
     unsafe_allow_html=True
