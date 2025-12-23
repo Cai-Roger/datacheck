@@ -5,14 +5,14 @@ from io import BytesIO
 from datetime import datetime
 from zoneinfo import ZoneInfo
 from pathlib import Path
+from email.message import EmailMessage
+import smtplib
 
 from config import APP_NAME, APP_VERSION, APP_FOOTER
 from compare_core import (
     clean_header_name,
     build_key_map,
-    count_duplicate_keys,
     diff_directional,
-    build_column_diff
 )
 
 # =========================================================
@@ -26,13 +26,11 @@ st.set_page_config(
 # =========================================================
 # 基本設定
 # =========================================================
-DATA_DIR = Path("data")
-DATA_DIR.mkdir(exist_ok=True)
-
-USAGE_XLSX = DATA_DIR / "usage_stats.xlsx"
-
 SESSION_TIMEOUT_SECONDS = 30 * 60
 WARNING_SECONDS = 5 * 60
+
+DATA_DIR = Path("data")
+FEEDBACK_XLSX = DATA_DIR / "feedback.xlsx"
 
 # =========================================================
 # 工具：台灣時間
@@ -40,30 +38,10 @@ WARNING_SECONDS = 5 * 60
 def now_tw():
     return datetime.now(ZoneInfo("Asia/Taipei"))
 
-# =========================================================
-# 🔢 系統總比對次數（永久）
-# =========================================================
-def load_total_compare_count():
-    if not USAGE_XLSX.exists():
-        df = pd.DataFrame([{
-            "total_compare_count": 0,
-            "last_update": now_tw().strftime("%Y-%m-%d %H:%M:%S")
-        }])
-        df.to_excel(USAGE_XLSX, index=False)
-        return 0
-
-    df = pd.read_excel(USAGE_XLSX)
-    return int(df.loc[0, "total_compare_count"])
-
-
-def increase_total_compare_count():
-    total = load_total_compare_count() + 1
-    df = pd.DataFrame([{
-        "total_compare_count": total,
-        "last_update": now_tw().strftime("%Y-%m-%d %H:%M:%S")
-    }])
-    df.to_excel(USAGE_XLSX, index=False)
-    return total
+def gen_download_filename(base_name: str, suffix="compare", ext="xlsx"):
+    ts = now_tw().strftime("%Y%m%d_%H%M%S")
+    seq = int(time.time() * 1000) % 1000
+    return f"{base_name}_{suffix}_{ts}_{seq:03d}.{ext}"
 
 # =========================================================
 # 🔐 登入檢查
@@ -77,8 +55,20 @@ def check_password():
         st.session_state.last_active_ts = now
     if "warned" not in st.session_state:
         st.session_state.warned = False
+
+    # Session 統計與事件鎖
     if "compare_count" not in st.session_state:
         st.session_state.compare_count = 0
+    if "compare_clicked" not in st.session_state:
+        st.session_state.compare_clicked = False
+
+    # 儲存比對輸出（讓 rerun 後 download 還在）
+    if "last_output_bytes" not in st.session_state:
+        st.session_state.last_output_bytes = None
+    if "last_output_name" not in st.session_state:
+        st.session_state.last_output_name = None
+    if "last_duration" not in st.session_state:
+        st.session_state.last_duration = None
 
     if st.session_state.authenticated:
         if now - st.session_state.last_active_ts >= SESSION_TIMEOUT_SECONDS:
@@ -93,34 +83,53 @@ def check_password():
         if pwd == st.secrets["auth"]["password"]:
             st.session_state.authenticated = True
             st.session_state.last_active_ts = now
-            st.session_state.compare_count = 0
             st.session_state.warned = False
+            st.session_state.compare_count = 0
+            st.session_state.compare_clicked = False
+
+            # 清掉上次結果
+            st.session_state.last_output_bytes = None
+            st.session_state.last_output_name = None
+            st.session_state.last_duration = None
+
             st.rerun()
         else:
             st.error("密碼錯誤")
 
     return False
 
-
 if not check_password():
     st.stop()
+
+# =========================================================
+# 回饋寫入 Excel
+# =========================================================
+def append_feedback_to_excel(row: dict):
+    DATA_DIR.mkdir(parents=True, exist_ok=True)
+    cols = ["time_tw", "name", "email", "message", "app_version", "compare_count_session"]
+    new_df = pd.DataFrame([[row.get(c, "") for c in cols]], columns=cols)
+
+    if FEEDBACK_XLSX.exists():
+        old = pd.read_excel(FEEDBACK_XLSX)
+        out = pd.concat([old, new_df], ignore_index=True)
+    else:
+        out = new_df
+
+    out.to_excel(FEEDBACK_XLSX, index=False)
 
 # =========================================================
 # Sidebar
 # =========================================================
 with st.sidebar:
     st.markdown("### 🟢 登入狀態")
-
-    total_compare = load_total_compare_count()
-
-    st.caption(f"📊 系統累積比對次數：{total_compare}")
-    st.caption(f"🔁 本次登入比對次數：{st.session_state.compare_count}")
+    st.caption(f"🔁 本次登入｜比對執行次數：{st.session_state.compare_count}")
+    st.caption(f"版本：{APP_VERSION}")
 
     now = time.time()
     remaining = SESSION_TIMEOUT_SECONDS - (now - st.session_state.last_active_ts)
 
     if remaining <= WARNING_SECONDS and remaining > 0 and not st.session_state.warned:
-        st.warning("⚠️ 登入即將逾時，請點擊「延長登入」")
+        st.warning("⚠️ 登入即將逾時，請點擊延長登入")
         st.session_state.warned = True
 
     if remaining <= 0:
@@ -130,33 +139,48 @@ with st.sidebar:
     if st.button("🔁 延長登入"):
         st.session_state.last_active_ts = time.time()
         st.session_state.warned = False
-        st.success("已延長登入")
         st.rerun()
 
     if st.button("🔓 登出"):
         st.session_state.authenticated = False
         st.rerun()
 
+    # 意見箱
+    st.markdown("---")
+    st.markdown("### ✉️ 意見箱")
+
+    with st.form("feedback_form", clear_on_submit=True):
+        fb_name = st.text_input("姓名 / 暱稱（選填）")
+        fb_email = st.text_input("聯絡信箱（選填）")
+        fb_msg = st.text_area("意見內容", height=120)
+        submitted = st.form_submit_button("📩 送出")
+
+    if submitted:
+        if not fb_msg.strip():
+            st.error("請先輸入意見內容")
+        else:
+            row = {
+                "time_tw": now_tw().strftime("%Y-%m-%d %H:%M:%S"),
+                "name": fb_name,
+                "email": fb_email,
+                "message": fb_msg,
+                "app_version": APP_VERSION,
+                "compare_count_session": st.session_state.compare_count,
+            }
+            append_feedback_to_excel(row)
+            st.success("✅ 已收到回饋")
+
 # =========================================================
 # 主畫面
 # =========================================================
-st.title(f"Excel 比對程式（{APP_VERSION}）")
+st.title(f"{APP_NAME}（Web {APP_VERSION}）")
 
 st.markdown("""
 ### 使用說明
 1. 上傳 Excel A、Excel B  
-2. 勾選 Key 欄位（可多 Key）  
+2. 確認 Key 欄位  
 3. 點擊「開始差異比對」  
-
-⚠️ 請確認兩份 Excel 表頭一致
 """)
-
-# =========================================================
-# 檔名
-# =========================================================
-def gen_download_filename(base_name: str):
-    ts = now_tw().strftime("%Y%m%d_%H%M%S")
-    return f"{base_name}_{ts}.xlsx"
 
 # =========================================================
 # 上傳檔案
@@ -167,25 +191,27 @@ with col1:
 with col2:
     file_b = st.file_uploader("📤 上傳 Excel B", type=["xlsx"])
 
-output = None
-download_filename = None
-duration = None
-
 # =========================================================
 # 主流程
 # =========================================================
+df_a = None
+df_b = None
+selected_keys = []
+
 if file_a and file_b:
+    st.session_state.last_active_ts = time.time()
+
     df_a = pd.read_excel(file_a)
     df_b = pd.read_excel(file_b)
 
-    st.success(f"Excel A：{df_a.shape[0]} 筆 ｜ Excel B：{df_b.shape[0]} 筆")
+    st.success(f"📄 Excel A 筆數：{len(df_a)} ｜ Excel B 筆數：{len(df_b)}")
 
     st.subheader("🔑 Key 欄位設定")
 
-    cols = list(df_a.columns)
+    cols = df_a.columns.tolist()
     default_keys = [c for c in cols if clean_header_name(c) in {"PLNNR", "VORNR"}]
     if not default_keys:
-        default_keys = cols[:2]
+        default_keys = cols[:1]
 
     selected_keys = st.multiselect(
         "選擇 Key 欄位（可多選）",
@@ -194,68 +220,63 @@ if file_a and file_b:
     )
 
     if selected_keys:
-        start_compare = st.button("🟢 開始差異比對 🟢", type="primary")
-    else:
-        start_compare = False
-        st.info("請先選擇 Key 欄位")
+        if st.button("🟢 開始差異比對 🟢", type="primary"):
+            st.session_state.compare_clicked = True
 
-    if start_compare:
-        st.session_state.last_active_ts = time.time()
+# =========================================================
+# 真正執行（只跑一次）— 完成後立即 rerun 刷新 sidebar
+# =========================================================
+if st.session_state.compare_clicked:
+    st.session_state.compare_clicked = False
 
-        # ✅ 計次「就在這裡」
-        st.session_state.compare_count += 1
-        increase_total_compare_count()
+    # ✅ 計次：按下「開始比對」就算一次（與下載無關）
+    st.session_state.compare_count += 1
+    st.session_state.last_active_ts = time.time()
+    st.session_state.warned = False
 
-        with st.spinner("比對中..."):
-            t0 = time.time()
+    t0 = time.time()
 
+    with st.spinner("資料比對中，請稍候..."):
+        # 這裡防呆：如果使用者在 rerun 過程中把檔案拿掉
+        if df_a is None or df_b is None or not selected_keys:
+            st.error("檔案或 Key 尚未準備好，請重新上傳並選擇 Key")
+        else:
             key_cols_a = [df_a.columns.get_loc(k) for k in selected_keys]
             key_cols_b = [df_b.columns.get_loc(k) for k in selected_keys]
 
             map_a = build_key_map(df_a, key_cols_a)
             map_b = build_key_map(df_b, key_cols_b)
 
-            dup_a = count_duplicate_keys(df_a, key_cols_a)
-            dup_b = count_duplicate_keys(df_b, key_cols_b)
-
-            df_col_diff = build_column_diff(df_a, df_b)
-
             a_rows, *_ = diff_directional(df_a, df_b, map_a, map_b, key_cols_a, "A", "B")
             b_rows, *_ = diff_directional(df_b, df_a, map_b, map_a, key_cols_b, "B", "A")
 
             headers = [f"KEY_{i+1}" for i in range(len(selected_keys))] + ["差異欄位", "A值", "B值", "差異來源"]
-
-            df_a_to_b = pd.DataFrame(a_rows, columns=headers)
-            df_b_to_a = pd.DataFrame(b_rows, columns=headers) if b_rows else pd.DataFrame(columns=headers)
-
-            df_summary = pd.DataFrame([
-                ["Key 欄位", ", ".join(selected_keys), "", "", ""],
-                ["A 重複 Key", dup_a, "", "", ""],
-                ["B 重複 Key", dup_b, "", "", ""],
-                ["A→B 差異列", len(df_a_to_b), "", "", ""],
-                ["B→A 差異列", len(df_b_to_a), "", "", ""],
-            ], columns=["項目", "值1", "值2", "值3", "值4"])
+            df_out = pd.DataFrame(a_rows + b_rows, columns=headers)
 
             output = BytesIO()
             with pd.ExcelWriter(output, engine="xlsxwriter") as writer:
-                df_summary.to_excel(writer, "Summary", index=False)
-                df_col_diff.to_excel(writer, "ColumnDiff", index=False)
-                df_a_to_b.to_excel(writer, "A_to_B", index=False)
-                df_b_to_a.to_excel(writer, "B_to_A", index=False)
+                df_out.to_excel(writer, index=False)
 
             duration = round(time.time() - t0, 2)
-            download_filename = gen_download_filename("Excel差異比對結果")
 
-        st.success(f"比對完成（耗時 {duration} 秒）")
+            st.session_state.last_output_bytes = output.getvalue()
+            st.session_state.last_output_name = gen_download_filename("Excel差異比對結果")
+            st.session_state.last_duration = duration
+
+    # ✅ 立刻 rerun：讓 sidebar 次數「不用下載」就立即更新
+    st.rerun()
 
 # =========================================================
-# 下載
+# 顯示上次比對結果（下載區 & 耗時）
 # =========================================================
-if output:
+if st.session_state.last_output_bytes:
+    if st.session_state.last_duration is not None:
+        st.success(f"✅ 比對完成，耗時 {st.session_state.last_duration} 秒")
+
     st.download_button(
-        "📥 下載比對結果",
-        data=output.getvalue(),
-        file_name=download_filename,
+        "📥 下載差異比對結果 Excel",
+        data=st.session_state.last_output_bytes,
+        file_name=st.session_state.last_output_name or "Excel差異比對結果.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
 
@@ -264,8 +285,7 @@ if output:
 # =========================================================
 st.markdown(
     f"""
-    <div style="margin-top:40px;padding:12px 0;text-align:center;
-                font-size:13px;color:#666;border-top:1px solid #e0e0e0;">
+    <div style="margin-top:40px;text-align:center;font-size:13px;color:#666;">
         {APP_FOOTER} {APP_VERSION}
     </div>
     """,
