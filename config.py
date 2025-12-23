@@ -1,7 +1,7 @@
 # config.py
 
 APP_NAME = "QQ資料製作小組｜Excel 比對程式"
-APP_VERSION = "V3.5.1"
+APP_VERSION = "V4.0.0"
 APP_FOOTER = "© 2025 Roger＆Andy with GPT ｜ QQ資料製作小組 ｜"
 
 # 之後要擴充也很方便
