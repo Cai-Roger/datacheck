@@ -71,6 +71,7 @@ if not check_admin():
 # =========================================================
 with st.sidebar:
     st.markdown("### 👤 管理者模式")
+    st.caption(f" 目前版本｜{APP_VERSION}")
 
     if st.button("🔓 登出管理者"):
         st.session_state.admin_authenticated = False
