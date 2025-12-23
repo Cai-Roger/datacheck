@@ -12,9 +12,7 @@ from config import APP_NAME, APP_VERSION, APP_FOOTER
 from compare_core import (
     clean_header_name,
     build_key_map,
-    count_duplicate_keys,
     diff_directional,
-    build_column_diff
 )
 
 # =========================================================
@@ -40,6 +38,11 @@ FEEDBACK_XLSX = DATA_DIR / "feedback.xlsx"
 def now_tw():
     return datetime.now(ZoneInfo("Asia/Taipei"))
 
+def gen_download_filename(base_name: str, suffix="compare", ext="xlsx"):
+    ts = now_tw().strftime("%Y%m%d_%H%M%S")
+    seq = int(time.time() * 1000) % 1000
+    return f"{base_name}_{suffix}_{ts}_{seq:03d}.{ext}"
+
 # =========================================================
 # 🔐 登入檢查
 # =========================================================
@@ -59,6 +62,14 @@ def check_password():
     if "compare_clicked" not in st.session_state:
         st.session_state.compare_clicked = False
 
+    # 儲存比對輸出（讓 rerun 後 download 還在）
+    if "last_output_bytes" not in st.session_state:
+        st.session_state.last_output_bytes = None
+    if "last_output_name" not in st.session_state:
+        st.session_state.last_output_name = None
+    if "last_duration" not in st.session_state:
+        st.session_state.last_duration = None
+
     if st.session_state.authenticated:
         if now - st.session_state.last_active_ts >= SESSION_TIMEOUT_SECONDS:
             st.session_state.authenticated = False
@@ -75,12 +86,17 @@ def check_password():
             st.session_state.warned = False
             st.session_state.compare_count = 0
             st.session_state.compare_clicked = False
+
+            # 清掉上次結果
+            st.session_state.last_output_bytes = None
+            st.session_state.last_output_name = None
+            st.session_state.last_duration = None
+
             st.rerun()
         else:
             st.error("密碼錯誤")
 
     return False
-
 
 if not check_password():
     st.stop()
@@ -90,16 +106,7 @@ if not check_password():
 # =========================================================
 def append_feedback_to_excel(row: dict):
     DATA_DIR.mkdir(parents=True, exist_ok=True)
-
-    cols = [
-        "time_tw",
-        "name",
-        "email",
-        "message",
-        "app_version",
-        "compare_count_session",
-    ]
-
+    cols = ["time_tw", "name", "email", "message", "app_version", "compare_count_session"]
     new_df = pd.DataFrame([[row.get(c, "") for c in cols]], columns=cols)
 
     if FEEDBACK_XLSX.exists():
@@ -116,6 +123,7 @@ def append_feedback_to_excel(row: dict):
 with st.sidebar:
     st.markdown("### 🟢 登入狀態")
     st.caption(f"🔁 本次登入｜比對執行次數：{st.session_state.compare_count}")
+    st.caption(f"版本：{APP_VERSION}")
 
     now = time.time()
     remaining = SESSION_TIMEOUT_SECONDS - (now - st.session_state.last_active_ts)
@@ -183,27 +191,25 @@ with col1:
 with col2:
     file_b = st.file_uploader("📤 上傳 Excel B", type=["xlsx"])
 
-output = None
-download_filename = None
-duration = None
-
 # =========================================================
 # 主流程
 # =========================================================
+df_a = None
+df_b = None
+selected_keys = []
+
 if file_a and file_b:
+    st.session_state.last_active_ts = time.time()
+
     df_a = pd.read_excel(file_a)
     df_b = pd.read_excel(file_b)
 
-    # ✅ 檔案一上傳就顯示筆數
     st.success(f"📄 Excel A 筆數：{len(df_a)} ｜ Excel B 筆數：{len(df_b)}")
 
     st.subheader("🔑 Key 欄位設定")
 
     cols = df_a.columns.tolist()
-    default_keys = [
-        c for c in cols
-        if clean_header_name(c) in {"PLNNR", "VORNR"}
-    ]
+    default_keys = [c for c in cols if clean_header_name(c) in {"PLNNR", "VORNR"}]
     if not default_keys:
         default_keys = cols[:1]
 
@@ -213,39 +219,38 @@ if file_a and file_b:
         default=default_keys
     )
 
-    # ===== 按鈕事件 =====
     if selected_keys:
         if st.button("🟢 開始差異比對 🟢", type="primary"):
             st.session_state.compare_clicked = True
 
-    # ===== 真正執行（只跑一次）=====
-    if st.session_state.compare_clicked:
-        st.session_state.compare_clicked = False
+# =========================================================
+# 真正執行（只跑一次）— 完成後立即 rerun 刷新 sidebar
+# =========================================================
+if st.session_state.compare_clicked:
+    st.session_state.compare_clicked = False
 
-        # ✅ 計次：就在這一行
-        st.session_state.compare_count += 1
+    # ✅ 計次：按下「開始比對」就算一次（與下載無關）
+    st.session_state.compare_count += 1
+    st.session_state.last_active_ts = time.time()
+    st.session_state.warned = False
 
-        t0 = time.time()
+    t0 = time.time()
 
-        with st.spinner("資料比對中，請稍候..."):
+    with st.spinner("資料比對中，請稍候..."):
+        # 這裡防呆：如果使用者在 rerun 過程中把檔案拿掉
+        if df_a is None or df_b is None or not selected_keys:
+            st.error("檔案或 Key 尚未準備好，請重新上傳並選擇 Key")
+        else:
             key_cols_a = [df_a.columns.get_loc(k) for k in selected_keys]
             key_cols_b = [df_b.columns.get_loc(k) for k in selected_keys]
 
             map_a = build_key_map(df_a, key_cols_a)
             map_b = build_key_map(df_b, key_cols_b)
 
-            a_rows, *_ = diff_directional(
-                df_a, df_b, map_a, map_b, key_cols_a, "A", "B"
-            )
-            b_rows, *_ = diff_directional(
-                df_b, df_a, map_b, map_a, key_cols_b, "B", "A"
-            )
+            a_rows, *_ = diff_directional(df_a, df_b, map_a, map_b, key_cols_a, "A", "B")
+            b_rows, *_ = diff_directional(df_b, df_a, map_b, map_a, key_cols_b, "B", "A")
 
-            headers = (
-                [f"KEY_{i+1}" for i in range(len(selected_keys))]
-                + ["差異欄位", "A值", "B值", "差異來源"]
-            )
-
+            headers = [f"KEY_{i+1}" for i in range(len(selected_keys))] + ["差異欄位", "A值", "B值", "差異來源"]
             df_out = pd.DataFrame(a_rows + b_rows, columns=headers)
 
             output = BytesIO()
@@ -254,21 +259,24 @@ if file_a and file_b:
 
             duration = round(time.time() - t0, 2)
 
-            download_filename = (
-                f"Excel比對結果_{now_tw().strftime('%Y%m%d_%H%M%S')}.xlsx"
-            )
+            st.session_state.last_output_bytes = output.getvalue()
+            st.session_state.last_output_name = gen_download_filename("Excel差異比對結果")
+            st.session_state.last_duration = duration
 
-        # ✅ 比對時間顯示
-        st.success(f"✅ 比對完成，耗時 {duration} 秒")
+    # ✅ 立刻 rerun：讓 sidebar 次數「不用下載」就立即更新
+    st.rerun()
 
 # =========================================================
-# 下載區（不影響計次）
+# 顯示上次比對結果（下載區 & 耗時）
 # =========================================================
-if output:
+if st.session_state.last_output_bytes:
+    if st.session_state.last_duration is not None:
+        st.success(f"✅ 比對完成，耗時 {st.session_state.last_duration} 秒")
+
     st.download_button(
-        "📥 下載比對結果",
-        data=output.getvalue(),
-        file_name=download_filename,
+        "📥 下載差異比對結果 Excel",
+        data=st.session_state.last_output_bytes,
+        file_name=st.session_state.last_output_name or "Excel差異比對結果.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
 
