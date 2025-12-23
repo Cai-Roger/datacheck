@@ -21,7 +21,7 @@ from compare_core import (
 # Page config（一定要第一個）
 # =========================================================
 st.set_page_config(
-    page_title="QQ資料製作小組｜Excel 比對程式",
+    page_title=f"{APP_NAME}｜Excel 比對程式",
     layout="wide"
 )
 
@@ -55,8 +55,12 @@ def check_password():
         st.session_state.last_active_ts = now
     if "warned" not in st.session_state:
         st.session_state.warned = False
+
+    # ✅ Session 統計
     if "compare_count" not in st.session_state:
         st.session_state.compare_count = 0
+    if "compare_clicked" not in st.session_state:
+        st.session_state.compare_clicked = False
 
     if st.session_state.authenticated:
         if now - st.session_state.last_active_ts >= SESSION_TIMEOUT_SECONDS:
@@ -73,6 +77,7 @@ def check_password():
             st.session_state.last_active_ts = now
             st.session_state.warned = False
             st.session_state.compare_count = 0
+            st.session_state.compare_clicked = False
             st.rerun()
         else:
             st.error("密碼錯誤")
@@ -106,7 +111,15 @@ def send_feedback_email(subject: str, body: str):
 def append_feedback_to_excel(row: dict):
     DATA_DIR.mkdir(parents=True, exist_ok=True)
 
-    cols = ["time_tw", "name", "email", "message", "app_version", "compare_count_session"]
+    cols = [
+        "time_tw",
+        "name",
+        "email",
+        "message",
+        "app_version",
+        "compare_count_session",
+    ]
+
     new_df = pd.DataFrame([[row.get(c, "") for c in cols]], columns=cols)
 
     if FEEDBACK_XLSX.exists():
@@ -169,12 +182,29 @@ with st.sidebar:
                 "compare_count_session": st.session_state.compare_count,
             }
             append_feedback_to_excel(row)
+
+            if "mail" in st.secrets:
+                try:
+                    send_feedback_email(
+                        "【Excel 比對程式｜意見回饋】",
+                        fb_msg
+                    )
+                except Exception:
+                    pass
+
             st.success("✅ 已收到回饋")
 
 # =========================================================
 # 主畫面
 # =========================================================
-st.title(f"Excel 比對程式（Web {APP_VERSION}）")
+st.title(f"{APP_NAME}（Web {APP_VERSION}）")
+
+st.markdown("""
+### 使用說明
+1. 上傳 Excel A、Excel B  
+2. 確認 Key 欄位  
+3. 點擊「開始差異比對」  
+""")
 
 # =========================================================
 # 上傳檔案
@@ -196,30 +226,58 @@ if file_a and file_b:
     df_b = pd.read_excel(file_b)
 
     st.subheader("🔑 Key 欄位設定")
-    selected_keys = st.multiselect("選擇 Key 欄位", df_a.columns.tolist())
+
+    cols = df_a.columns.tolist()
+    default_keys = [
+        c for c in cols
+        if clean_header_name(c) in {"PLNNR", "VORNR"}
+    ]
+    if not default_keys:
+        default_keys = cols[:1]
+
+    selected_keys = st.multiselect(
+        "選擇 Key 欄位（可多選）",
+        options=cols,
+        default=default_keys
+    )
 
     if selected_keys:
         if st.button("🟢 開始差異比對 🟢", type="primary"):
-            st.session_state.compare_count += 1  # ⭐ 正式計次點
+            st.session_state.compare_clicked = True
 
-            with st.spinner("資料比對中..."):
-                key_cols_a = [df_a.columns.get_loc(k) for k in selected_keys]
-                key_cols_b = [df_b.columns.get_loc(k) for k in selected_keys]
+    # ===== 真正執行（只會跑一次）=====
+    if st.session_state.compare_clicked:
+        st.session_state.compare_clicked = False
+        st.session_state.compare_count += 1   # ⭐ 唯一計次點
 
-                map_a = build_key_map(df_a, key_cols_a)
-                map_b = build_key_map(df_b, key_cols_b)
+        with st.spinner("資料比對中，請稍候..."):
+            key_cols_a = [df_a.columns.get_loc(k) for k in selected_keys]
+            key_cols_b = [df_b.columns.get_loc(k) for k in selected_keys]
 
-                a_rows, *_ = diff_directional(df_a, df_b, map_a, map_b, key_cols_a, "A", "B")
-                b_rows, *_ = diff_directional(df_b, df_a, map_b, map_a, key_cols_b, "B", "A")
+            map_a = build_key_map(df_a, key_cols_a)
+            map_b = build_key_map(df_b, key_cols_b)
 
-                headers = [f"KEY_{i+1}" for i in range(len(selected_keys))] + ["差異欄位", "A值", "B值", "差異來源"]
-                df_out = pd.DataFrame(a_rows + b_rows, columns=headers)
+            a_rows, *_ = diff_directional(
+                df_a, df_b, map_a, map_b, key_cols_a, "A", "B"
+            )
+            b_rows, *_ = diff_directional(
+                df_b, df_a, map_b, map_a, key_cols_b, "B", "A"
+            )
 
-                output = BytesIO()
-                with pd.ExcelWriter(output, engine="xlsxwriter") as writer:
-                    df_out.to_excel(writer, index=False)
+            headers = (
+                [f"KEY_{i+1}" for i in range(len(selected_keys))]
+                + ["差異欄位", "A值", "B值", "差異來源"]
+            )
 
-                download_filename = f"Excel比對結果_{now_tw().strftime('%Y%m%d_%H%M%S')}.xlsx"
+            df_out = pd.DataFrame(a_rows + b_rows, columns=headers)
+
+            output = BytesIO()
+            with pd.ExcelWriter(output, engine="xlsxwriter") as writer:
+                df_out.to_excel(writer, index=False)
+
+            download_filename = (
+                f"Excel比對結果_{now_tw().strftime('%Y%m%d_%H%M%S')}.xlsx"
+            )
 
 # =========================================================
 # 下載
