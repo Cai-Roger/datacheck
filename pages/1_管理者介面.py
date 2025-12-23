@@ -11,7 +11,7 @@ from config import APP_NAME, APP_VERSION, APP_FOOTER
 # Page config
 # =========================================================
 st.set_page_config(
-    page_title="管理者頁｜回饋管理",
+    page_title="回饋管理",
     layout="wide"
 )
 
