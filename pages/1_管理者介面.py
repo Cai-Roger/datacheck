@@ -42,7 +42,7 @@ def check_admin():
         return True
 
     # 尚未登入
-    st.title("🔐 管理者登入")
+    st.title("👨🏻‍💻 管理者登入")
     pwd = st.text_input("請輸入管理者密碼", type="password")
 
     if st.button("登入"):
