@@ -75,10 +75,6 @@ else:
     # - 匯出
     # 全部都一定要放在這個 else 裡
 
-df_a = pd.read_excel(file_a)
-df_b = pd.read_excel(file_b)
-
-st.success(f"Excel A：{df_a.shape} ｜ Excel B：{df_b.shape}")
 
 # =========================
 # Key 勾選
