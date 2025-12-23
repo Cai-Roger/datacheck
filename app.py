@@ -4,6 +4,7 @@ import time
 from io import BytesIO
 from datetime import datetime
 from zoneinfo import ZoneInfo
+import streamlit.components.v1 as components
 
 from compare_core import (
     clean_header_name,
@@ -14,7 +15,7 @@ from compare_core import (
 )
 
 # =========================================================
-# Page config（⚠️ 必須是第一個 Streamlit 呼叫）
+# Page config（⚠️ 一定要第一個 Streamlit 呼叫）
 # =========================================================
 st.set_page_config(
     page_title="QQ資料製作小組｜Excel 比對程式",
@@ -22,17 +23,17 @@ st.set_page_config(
 )
 
 # =========================================================
-# 登入逾時設定（秒）
+# Session 設定
 # =========================================================
-SESSION_TIMEOUT_SECONDS = 30 * 60   # 30 分鐘
+SESSION_TIMEOUT_SECONDS = 30 * 60        # 30 分鐘
+WARNING_SECONDS = 5 * 60                # 5 分鐘警告
 
 # =========================================================
-# 🔐 登入檢查（含逾時）
+# 🔐 登入檢查（不被心跳刷新影響）
 # =========================================================
 def check_password():
     now = time.time()
 
-    # 初始化 session 狀態
     if "authenticated" not in st.session_state:
         st.session_state.authenticated = False
     if "last_active_ts" not in st.session_state:
@@ -40,15 +41,10 @@ def check_password():
 
     # ===== 已登入 =====
     if st.session_state.authenticated:
-        # 檢查是否逾時
-        if now - st.session_state.last_active_ts > SESSION_TIMEOUT_SECONDS:
+        # ⛔ 已逾時：直接登出
+        if now - st.session_state.last_active_ts >= SESSION_TIMEOUT_SECONDS:
             st.session_state.authenticated = False
-            st.session_state.last_active_ts = now
-            st.warning("⏰ 登入逾時，請重新登入")
             return False
-
-        # 每次 rerun 都視為一次活動
-        st.session_state.last_active_ts = now
         return True
 
     # ===== 尚未登入 =====
@@ -67,7 +63,7 @@ def check_password():
     return False
 
 
-# ❗ 未登入或已逾時，整個程式停止在登入頁
+# ❗ 未登入或已逾時 → 停在登入畫面
 if not check_password():
     st.stop()
 
@@ -75,8 +71,17 @@ if not check_password():
 # Sidebar：登入狀態 / 剩餘時間 / 延長登入
 # =========================================================
 with st.sidebar:
-    # ⏱ 每秒自動刷新（讓剩餘時間會動）
-    st.autorefresh(interval=1000, key="session_timer")
+    # ⏱ JS 心跳刷新（每秒）
+    components.html(
+        """
+        <script>
+            setTimeout(function(){
+                window.parent.location.reload();
+            }, 1000);
+        </script>
+        """,
+        height=0,
+    )
 
     st.markdown("### 🟢 登入狀態")
 
@@ -85,8 +90,13 @@ with st.sidebar:
     remaining = max(0, int(remaining))
     mins, secs = divmod(remaining, 60)
 
-    st.info(f"⏳ 剩餘時間：**{mins:02d}:{secs:02d}**")
+    # 🔴 剩餘時間 < 5 分鐘 → 紅色警告
+    if remaining <= WARNING_SECONDS:
+        st.error(f"⏳ 剩餘時間：**{mins:02d}:{secs:02d}**")
+    else:
+        st.info(f"⏳ 剩餘時間：**{mins:02d}:{secs:02d}**")
 
+    # 🔁 延長登入（真實操作才更新時間）
     if st.button("🔁 延長登入"):
         st.session_state.last_active_ts = time.time()
         st.success("已延長登入時間")
@@ -94,13 +104,12 @@ with st.sidebar:
 
     if st.button("🔓 登出"):
         st.session_state.authenticated = False
-        st.session_state.last_active_ts = time.time()
         st.rerun()
 
 # =========================================================
 # 主畫面
 # =========================================================
-st.title("Excel 比對程式（Web V3.0.1 正式版）")
+st.title("Excel 比對程式（Web V3.1.0 正式版）")
 
 st.markdown("""
 ### 使用說明
@@ -144,9 +153,6 @@ else:
 
     st.success(f"Excel A：{df_a.shape} ｜ Excel B：{df_b.shape}")
 
-    # =========================
-    # Key 設定
-    # =========================
     st.subheader("🔑 Key 欄位設定")
 
     cols = list(df_a.columns)
@@ -160,9 +166,6 @@ else:
         default=default_keys
     )
 
-    # =========================
-    # Key 選完才顯示按鈕
-    # =========================
     if selected_keys:
         st.success(f"已選擇 Key：{', '.join(selected_keys)}")
         st.markdown("---")
@@ -171,10 +174,10 @@ else:
         start_compare = False
         st.info("請至少選擇一個 Key 欄位後，才能開始比對")
 
-    # =========================
-    # 比對執行
-    # =========================
     if start_compare:
+        # 👉 真實操作，更新登入時間
+        st.session_state.last_active_ts = time.time()
+
         with st.spinner("資料比對中，請稍候..."):
             t0 = time.time()
 
@@ -252,7 +255,7 @@ st.markdown(
         color:#666;
         border-top:1px solid #e0e0e0;
     ">
-        © 2025 Roger＆Andy with GPT ｜ QQ資料製作小組 ｜ V3.0.1
+        © 2025 Roger＆Andy with GPT ｜ QQ資料製作小組 ｜ V3.1.0
     </div>
     """,
     unsafe_allow_html=True
