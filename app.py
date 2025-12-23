@@ -4,7 +4,6 @@ import time
 from io import BytesIO
 from datetime import datetime
 from zoneinfo import ZoneInfo
-import streamlit.components.v1 as components
 
 from compare_core import (
     clean_header_name,
@@ -15,7 +14,7 @@ from compare_core import (
 )
 
 # =========================================================
-# Page config（⚠️ 一定要第一個 Streamlit 呼叫）
+# Page config（一定要第一個）
 # =========================================================
 st.set_page_config(
     page_title="QQ資料製作小組｜Excel 比對程式",
@@ -23,13 +22,13 @@ st.set_page_config(
 )
 
 # =========================================================
-# Session 設定
+# 登入與逾時設定
 # =========================================================
-SESSION_TIMEOUT_SECONDS = 30 * 60        # 30 分鐘
-WARNING_SECONDS = 5 * 60                # 5 分鐘警告
+SESSION_TIMEOUT_SECONDS = 30 * 60   # 30 分鐘
+WARNING_SECONDS = 5 * 60            # 剩 5 分鐘警告一次
 
 # =========================================================
-# 🔐 登入檢查（不被心跳刷新影響）
+# 🔐 登入檢查（含逾時）
 # =========================================================
 def check_password():
     now = time.time()
@@ -38,10 +37,11 @@ def check_password():
         st.session_state.authenticated = False
     if "last_active_ts" not in st.session_state:
         st.session_state.last_active_ts = now
+    if "warned" not in st.session_state:
+        st.session_state.warned = False
 
     # ===== 已登入 =====
     if st.session_state.authenticated:
-        # ⛔ 已逾時：直接登出
         if now - st.session_state.last_active_ts >= SESSION_TIMEOUT_SECONDS:
             st.session_state.authenticated = False
             return False
@@ -56,6 +56,7 @@ def check_password():
         if pwd == st.secrets["auth"]["password"]:
             st.session_state.authenticated = True
             st.session_state.last_active_ts = now
+            st.session_state.warned = False
             st.rerun()
         else:
             st.error("密碼錯誤")
@@ -63,30 +64,32 @@ def check_password():
     return False
 
 
-# ❗ 未登入或已逾時 → 停在登入畫面
+# ❗ 未登入或已逾時，直接停
 if not check_password():
     st.stop()
 
 # =========================================================
-# Sidebar：登入狀態 / 剩餘時間 / 延長登入
+# Sidebar：登入狀態 / 警告 / 操作
 # =========================================================
 with st.sidebar:
     st.markdown("### 🟢 登入狀態")
 
     now = time.time()
     remaining = SESSION_TIMEOUT_SECONDS - (now - st.session_state.last_active_ts)
-    remaining = max(0, int(remaining))
-    mins, secs = divmod(remaining, 60)
 
-    # 🔴 剩餘時間 < 5 分鐘 → 紅色警告
-    if remaining <= WARNING_SECONDS:
-        st.error(f"⏳ 剩餘時間：**{mins:02d}:{secs:02d}**")
-    else:
-        st.info(f"⏳ 剩餘時間：**{mins:02d}:{secs:02d}**")
+    # ⚠️ 剩 5 分鐘警告一次
+    if remaining <= WARNING_SECONDS and remaining > 0 and not st.session_state.warned:
+        st.warning("⚠️ 登入即將逾時，請點擊「延長登入」")
+        st.session_state.warned = True
 
-    # 🔁 延長登入（真實操作才更新時間）
+    # ⛔ 已逾時 → 強制回登入
+    if remaining <= 0:
+        st.session_state.authenticated = False
+        st.rerun()
+
     if st.button("🔁 延長登入"):
         st.session_state.last_active_ts = time.time()
+        st.session_state.warned = False
         st.success("已延長登入時間")
         st.rerun()
 
@@ -109,7 +112,7 @@ st.markdown("""
 """)
 
 # =========================================================
-# 下載檔名產生器（台灣時間）
+# 下載檔名（台灣時間）
 # =========================================================
 def gen_download_filename(base_name: str, suffix="compare", ext="xlsx"):
     tw_tz = ZoneInfo("Asia/Taipei")
@@ -139,8 +142,13 @@ else:
     df_a = pd.read_excel(file_a)
     df_b = pd.read_excel(file_b)
 
+    st.session_state.last_active_ts = time.time()
+
     st.success(f"Excel A：{df_a.shape} ｜ Excel B：{df_b.shape}")
 
+    # =========================
+    # Key 設定
+    # =========================
     st.subheader("🔑 Key 欄位設定")
 
     cols = list(df_a.columns)
@@ -154,6 +162,9 @@ else:
         default=default_keys
     )
 
+    # =========================
+    # Key 選完才顯示按鈕
+    # =========================
     if selected_keys:
         st.success(f"已選擇 Key：{', '.join(selected_keys)}")
         st.markdown("---")
@@ -162,8 +173,10 @@ else:
         start_compare = False
         st.info("請至少選擇一個 Key 欄位後，才能開始比對")
 
+    # =========================
+    # 比對執行
+    # =========================
     if start_compare:
-        # 👉 真實操作，更新登入時間
         st.session_state.last_active_ts = time.time()
 
         with st.spinner("資料比對中，請稍候..."):
