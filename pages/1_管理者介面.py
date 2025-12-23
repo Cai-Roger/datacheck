@@ -70,7 +70,8 @@ if not check_admin():
 # ✅ 你指定：拿掉 APP_NAME / 版本字樣
 # =========================================================
 with st.sidebar:
-    st.markdown("### 👤 管理者模式","目前版本：{APP_VERSION}"
+    st.markdown("### 👤 管理者模式"
+                "目前版本：{APP_VERSION}"
                )
 
     if st.button("🔓 登出管理者"):
