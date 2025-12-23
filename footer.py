@@ -4,7 +4,6 @@ def render_footer():
     components.html(
         """
         <style>
-          /* 預留底部空間 */
           [data-testid="stMainBlockContainer"] {
               padding-bottom: 60px;
           }
@@ -25,7 +24,7 @@ def render_footer():
         </style>
 
         <div class="app-footer">
-            © 2025 Cai-Roger ｜ Excel 比對程式 ｜ V2.1.2
+            © 2025 Roger & Andy ｜ Excel 比對程式 ｜ V2.1.2
         </div>
         """,
         height=0
