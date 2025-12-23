@@ -193,6 +193,10 @@ with st.sidebar:
             row = {
                 "time_tw": now_tw().strftime("%Y-%m-%d %H:%M:%S"),
                 "name": fb_name,
+                "email": fb_email,
+                "message": fb_msg,
+                "app_version": APP_VERSION,
+                "compare_count_session": st.session_state.compare_count,
             }
 
             try:
