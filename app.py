@@ -23,6 +23,7 @@ st.set_page_config(
 )
 
 st.title("Excel 比對程式（Web V2.1.2 正式版）")
+sy.footer("Copyright © 2025 Roger＆Andy with GPT"
 
 st.markdown("""
 ***使用說明***
