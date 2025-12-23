@@ -3,7 +3,7 @@ import pandas as pd
 from pathlib import Path
 from io import BytesIO
 
-from config import APP_NAME, APP_VERSION
+from config import APP_NAME, APP_VERSION, APP_FOOTER
 
 # =========================================================
 # Page config
@@ -132,7 +132,7 @@ st.markdown(
         color:#666;
         border-top:1px solid #e0e0e0;
     ">
-        © 2025 Roger＆Andy with GPT ｜ 管理者頁 ｜ {APP_VERSION}
+        {APP_FOOTER} {APP_VERSION}
     </div>
     """,
     unsafe_allow_html=True
