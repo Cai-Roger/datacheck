@@ -164,7 +164,7 @@ df_table["_row_id"] = df_table.index  # 用來回寫原 df
 # 欄位排序：row_id 放最前，但不顯示給使用者
 table_cols = ["_row_id"] + DISPLAY_COLS
 
-st.subheader("📋 回饋列表（僅 status 可調整）")
+st.subheader("📋 回饋列表")
 
 edited = st.data_editor(
     df_table[table_cols],
