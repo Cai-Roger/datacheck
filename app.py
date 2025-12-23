@@ -13,13 +13,52 @@ from compare_core import (
     build_column_diff
 )
 
-# =========================
+# =========================================================
+# 🔐 登入檢查（使用 Streamlit Secrets，正式上線用）
+# =========================================================
+def check_password():
+    if "authenticated" not in st.session_state:
+        st.session_state.authenticated = False
+
+    if st.session_state.authenticated:
+        return True
+
+    st.title("🔐 系統登入")
+
+    pwd = st.text_input(
+        "請輸入系統密碼",
+        type="password"
+    )
+
+    if st.button("登入"):
+        if pwd == st.secrets["auth"]["password"]:
+            st.session_state.authenticated = True
+            st.rerun()
+        else:
+            st.error("密碼錯誤")
+
+    return False
+
+
+# ❗ 沒通過登入，整個程式到此為止
+if not check_password():
+    st.stop()
+
+
+# =========================================================
 # Page config
-# =========================
+# =========================================================
 st.set_page_config(
     page_title="QQ資料製作小組｜Excel 比對程式",
     layout="wide"
 )
+
+# Sidebar 登出
+with st.sidebar:
+    st.markdown("### 🔐 登入狀態")
+    if st.button("🔓 登出"):
+        st.session_state.authenticated = False
+        st.rerun()
 
 st.title("Excel 比對程式（Web V2.1.2 正式版）")
 
@@ -32,9 +71,9 @@ st.markdown("""
 ⚠️ 使用前請確認兩份 Excel 表頭名稱一致
 """)
 
-# =========================
+# =========================================================
 # 下載檔名產生器（台灣時間）
-# =========================
+# =========================================================
 def gen_download_filename(base_name: str, suffix="compare", ext="xlsx"):
     tw_tz = ZoneInfo("Asia/Taipei")
     now_tw = datetime.now(tw_tz)
@@ -42,23 +81,26 @@ def gen_download_filename(base_name: str, suffix="compare", ext="xlsx"):
     seq = int(time.time() * 1000) % 1000
     return f"{base_name}_{suffix}_{ts}_{seq:03d}.{ext}"
 
-# =========================
+
+# =========================================================
 # 上傳檔案
-# =========================
+# =========================================================
 col1, col2 = st.columns(2)
 with col1:
     file_a = st.file_uploader("📤 上傳 Excel A", type=["xlsx"])
 with col2:
     file_b = st.file_uploader("📤 上傳 Excel B", type=["xlsx"])
 
-# =========================
-# 主流程（不使用 st.stop）
-# =========================
+
 output = None
 download_filename = None
 
+# =========================================================
+# 主流程（不使用 st.stop）
+# =========================================================
 if file_a is None or file_b is None:
     st.info("請先上傳兩份 Excel")
+
 else:
     # 只在檔案存在時才讀取
     df_a = pd.read_excel(file_a)
@@ -66,9 +108,9 @@ else:
 
     st.success(f"Excel A：{df_a.shape} ｜ Excel B：{df_b.shape}")
 
-    # =========================
+    # =====================================================
     # Key 欄位設定
-    # =========================
+    # =====================================================
     st.subheader("🔑 Key 欄位設定")
 
     cols = list(df_a.columns)
@@ -82,9 +124,9 @@ else:
         default=default_keys
     )
 
-    # =========================
+    # =====================================================
     # Key 選完才顯示按鈕（重點）
-    # =========================
+    # =====================================================
     if selected_keys:
         st.success(f"已選擇 Key：{', '.join(selected_keys)}")
         st.markdown("---")
@@ -97,9 +139,9 @@ else:
         start_compare = False
         st.info("請至少選擇一個 Key 欄位後，才能開始比對")
 
-    # =========================
+    # =====================================================
     # 比對執行
-    # =========================
+    # =====================================================
     if start_compare:
         with st.spinner("資料比對中，請稍候..."):
             t0 = time.time()
@@ -157,9 +199,9 @@ else:
 
         st.success(f"比對完成（耗時 {duration} 秒）")
 
-# =========================
+# =========================================================
 # 下載區（一定在 button 區塊外）
-# =========================
+# =========================================================
 if output and download_filename:
     st.download_button(
         "📥 下載差異比對結果 Excel",
@@ -168,9 +210,9 @@ if output and download_filename:
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
 
-# =========================
+# =========================================================
 # Footer（永遠顯示）
-# =========================
+# =========================================================
 st.markdown(
     """
     <div style="
@@ -181,7 +223,7 @@ st.markdown(
         color:#666;
         border-top:1px solid #e0e0e0;
     ">
-        © 2025 Roger＆Andy with GPT｜QQ資料製作小組｜V2.1.2 
+        © 2025 Cai-Roger ｜ Excel 比對程式 ｜ V2.1.2
     </div>
     """,
     unsafe_allow_html=True
