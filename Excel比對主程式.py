@@ -213,9 +213,9 @@ with st.sidebar:
                 f"Email: {fb_email}\n"
                 f"App: {APP_VERSION}\n"
                 f"CompareCount(Session): {st.session_state.compare_count}\n"
-                f"FeedbackCount(Session): {st.session_state.feedback_count}\n"
                 f"\n--- Message ---\n{fb_msg}"
             )
+        
 
             if "mail" not in st.secrets:
                 st.info("（提示）未設定寄信 Secrets，[mail] 不存在，因此不寄信。")
