@@ -7,6 +7,7 @@ from zoneinfo import ZoneInfo
 from email.message import EmailMessage
 import smtplib
 from pathlib import Path
+from config import APP_NAME, APP_VERSION
 
 from compare_core import (
     clean_header_name,
@@ -19,7 +20,6 @@ from compare_core import (
 # =========================================================
 # Page config（一定要第一個）
 # =========================================================
-APP_VERSION = "V3.2.0"
 st.set_page_config(
     page_title="QQ資料製作小組｜Excel 比對程式",
     layout="wide"
