@@ -21,7 +21,7 @@ from compare_core import (
 # Page config（一定要第一個）
 # =========================================================
 st.set_page_config(
-    page_title=f"{APP_NAME}｜Excel 比對程式",
+    page_title=f"{APP_NAME}",
     layout="wide",
 )
 
@@ -134,7 +134,7 @@ def check_password():
         return True
 
     # ===== 尚未登入 =====
-    st.title("🔐 系統登入")
+    st.title("🔐 {APP_NAME}{APP_VERSION}系統登入")
 
     pwd = st.text_input("請輸入系統密碼", type="password")
 
