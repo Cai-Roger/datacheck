@@ -181,7 +181,7 @@ st.markdown(
         color:#666;
         border-top:1px solid #e0e0e0;
     ">
-        © 2025 Cai-Roger ｜ Excel 比對程式 ｜ V2.1.2
+        © 2025 Roger＆Andy with GPT | V2.1.2 
     </div>
     """,
     unsafe_allow_html=True
