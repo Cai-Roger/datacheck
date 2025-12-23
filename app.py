@@ -169,23 +169,3 @@ if output and download_filename:
 from footer import render_footer
 
 render_footer()
-
-st.markdown(
-    """
-    <style>
-    .footer {
-        margin-top: 40px;
-        padding: 12px 0;
-        text-align: center;
-        font-size: 13px;
-        color: #666;
-        border-top: 1px solid #e0e0e0;
-    }
-    </style>
-
-    <div class="footer">
-        © 2025 Roger & Andy ｜ Excel 比對程式 ｜ V2.1.2
-    </div>
-    """,
-    unsafe_allow_html=True
-)
