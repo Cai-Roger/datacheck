@@ -169,3 +169,8 @@ if output and download_filename:
 from footer import render_footer
 
 render_footer()
+
+st.markdown(
+    "<div style='text-align:center;color:red;'>FOOTER TEST</div>",
+    unsafe_allow_html=True
+)
