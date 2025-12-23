@@ -58,7 +58,7 @@ def check_password():
             st.session_state.authenticated = True
             st.session_state.last_active_ts = now
             st.session_state.warned = False
-            st.session_state.run_count = 0   # 初始化執行次數
+            st.session_state.run_count = 0
             st.rerun()
         else:
             st.error("密碼錯誤")
@@ -66,19 +66,19 @@ def check_password():
     return False
 
 
-# ❗ 未登入或已逾時，直接停
+# ❗ 未登入或已逾時
 if not check_password():
     st.stop()
 
 # =========================================================
-# 系統執行次數（同一 session）
+# 系統執行次數（本次 session）
 # =========================================================
 if "run_count" not in st.session_state:
     st.session_state.run_count = 0
 st.session_state.run_count += 1
 
 # =========================================================
-# 寄送意見信件
+# 寄送意見信（工具）
 # =========================================================
 def send_feedback_email(subject: str, body: str):
     cfg = st.secrets["mail"]
@@ -104,7 +104,7 @@ with st.sidebar:
     now = time.time()
     remaining = SESSION_TIMEOUT_SECONDS - (now - st.session_state.last_active_ts)
 
-    # ⚠️ 剩 5 分鐘只警告一次
+    # ⚠️ 剩 5 分鐘警告一次
     if remaining <= WARNING_SECONDS and remaining > 0 and not st.session_state.warned:
         st.warning("⚠️ 登入即將逾時，請點擊「延長登入」")
         st.session_state.warned = True
@@ -125,7 +125,7 @@ with st.sidebar:
         st.rerun()
 
     # =========================
-    # 意見箱
+    # ✉️ 意見箱（防呆版）
     # =========================
     st.markdown("---")
     st.markdown("### ✉️ 意見箱")
@@ -143,19 +143,24 @@ with st.sidebar:
             st.session_state.last_active_ts = time.time()
             st.session_state.warned = False
 
-            try:
-                subject = "【QQ資料製作小組｜意見箱】新回饋"
-                body = (
-                    f"Name: {fb_name}\n"
-                    f"Email: {fb_email}\n"
-                    f"Time: {datetime.now(ZoneInfo('Asia/Taipei')).strftime('%Y-%m-%d %H:%M:%S')}\n"
-                    f"RunCount: {st.session_state.run_count}\n"
-                    f"\n--- Message ---\n{fb_msg}"
-                )
-                send_feedback_email(subject, body)
-                st.success("已送出，感謝你的回饋！")
-            except Exception as e:
-                st.error(f"寄送失敗：{e}")
+            subject = "【QQ資料製作小組｜意見箱】新回饋"
+            body = (
+                f"Name: {fb_name}\n"
+                f"Email: {fb_email}\n"
+                f"Time: {datetime.now(ZoneInfo('Asia/Taipei')).strftime('%Y-%m-%d %H:%M:%S')}\n"
+                f"RunCount: {st.session_state.run_count}\n"
+                f"\n--- Message ---\n{fb_msg}"
+            )
+
+            # ✅ 防呆：沒有 mail secrets 也不會爆
+            if "mail" not in st.secrets:
+                st.warning("⚠️ 意見已收到，但系統尚未設定寄信功能")
+            else:
+                try:
+                    send_feedback_email(subject, body)
+                    st.success("已送出，感謝你的回饋！")
+                except Exception as e:
+                    st.error(f"寄送失敗：{e}")
 
 # =========================================================
 # 主畫面
