@@ -14,25 +14,52 @@ from compare_core import (
 )
 
 # =========================================================
-# 🔐 登入檢查（使用 Streamlit Secrets，正式上線用）
+# Page config（⚠️ 必須是第一個 Streamlit 呼叫）
+# =========================================================
+st.set_page_config(
+    page_title="QQ資料製作小組｜Excel 比對程式",
+    layout="wide"
+)
+
+# =========================================================
+# 登入逾時設定（秒）
+# =========================================================
+SESSION_TIMEOUT_SECONDS = 30 * 60   # 30 分鐘
+
+# =========================================================
+# 🔐 登入檢查（含逾時）
 # =========================================================
 def check_password():
+    now = time.time()
+
+    # 初始化 session 狀態
     if "authenticated" not in st.session_state:
         st.session_state.authenticated = False
+    if "last_active_ts" not in st.session_state:
+        st.session_state.last_active_ts = now
 
+    # ===== 已登入 =====
     if st.session_state.authenticated:
+        # 檢查是否逾時
+        if now - st.session_state.last_active_ts > SESSION_TIMEOUT_SECONDS:
+            st.session_state.authenticated = False
+            st.session_state.last_active_ts = now
+            st.warning("⏰ 登入逾時，請重新登入")
+            return False
+
+        # 更新最後活動時間（任何 rerun 都算）
+        st.session_state.last_active_ts = now
         return True
 
+    # ===== 尚未登入 =====
     st.title("🔐 系統登入")
 
-    pwd = st.text_input(
-        "請輸入系統密碼",
-        type="password"
-    )
+    pwd = st.text_input("請輸入系統密碼", type="password")
 
     if st.button("登入"):
         if pwd == st.secrets["auth"]["password"]:
             st.session_state.authenticated = True
+            st.session_state.last_active_ts = now
             st.rerun()
         else:
             st.error("密碼錯誤")
@@ -40,27 +67,38 @@ def check_password():
     return False
 
 
-# ❗ 沒通過登入，整個程式到此為止
+# ❗ 未登入或已逾時，整個程式停止
 if not check_password():
     st.stop()
 
-
 # =========================================================
-# Page config
+# Sidebar：登入狀態 / 剩餘時間 / 延長登入
 # =========================================================
-st.set_page_config(
-    page_title="QQ資料製作小組｜Excel 比對程式",
-    layout="wide"
-)
-
-# Sidebar 登出
 with st.sidebar:
     st.markdown("### 🟢 登入狀態")
-    if st.button("🔓 登出"):
-        st.session_state.authenticated = False
+
+    now = time.time()
+    remaining = SESSION_TIMEOUT_SECONDS - (now - st.session_state.last_active_ts)
+    remaining = max(0, int(remaining))
+
+    mins, secs = divmod(remaining, 60)
+
+    st.info(f"⏳ 剩餘時間：**{mins:02d}:{secs:02d}**")
+
+    if st.button("🔁 延長登入"):
+        st.session_state.last_active_ts = time.time()
+        st.success("已延長登入時間")
         st.rerun()
 
-st.title("Excel 比對程式（Web V2.1.2 正式版）")
+    if st.button("🔓 登出"):
+        st.session_state.authenticated = False
+        st.session_state.last_active_ts = time.time()
+        st.rerun()
+
+# =========================================================
+# 主畫面
+# =========================================================
+st.title("Excel 比對程式（Web V2.1.3 正式版）")
 
 st.markdown("""
 ### 使用說明
@@ -81,7 +119,6 @@ def gen_download_filename(base_name: str, suffix="compare", ext="xlsx"):
     seq = int(time.time() * 1000) % 1000
     return f"{base_name}_{suffix}_{ts}_{seq:03d}.{ext}"
 
-
 # =========================================================
 # 上傳檔案
 # =========================================================
@@ -91,26 +128,23 @@ with col1:
 with col2:
     file_b = st.file_uploader("📤 上傳 Excel B", type=["xlsx"])
 
-
 output = None
 download_filename = None
 
 # =========================================================
-# 主流程（不使用 st.stop）
+# 主流程
 # =========================================================
 if file_a is None or file_b is None:
     st.info("請先上傳兩份 Excel")
-
 else:
-    # 只在檔案存在時才讀取
     df_a = pd.read_excel(file_a)
     df_b = pd.read_excel(file_b)
 
     st.success(f"Excel A：{df_a.shape} ｜ Excel B：{df_b.shape}")
 
-    # =====================================================
-    # Key 欄位設定
-    # =====================================================
+    # =========================
+    # Key 設定
+    # =========================
     st.subheader("🔑 Key 欄位設定")
 
     cols = list(df_a.columns)
@@ -124,24 +158,20 @@ else:
         default=default_keys
     )
 
-    # =====================================================
-    # Key 選完才顯示按鈕（重點）
-    # =====================================================
+    # =========================
+    # Key 選完才顯示按鈕
+    # =========================
     if selected_keys:
         st.success(f"已選擇 Key：{', '.join(selected_keys)}")
         st.markdown("---")
-
-        start_compare = st.button(
-            "🟢 開始差異比對 🟢",
-            type="primary"
-        )
+        start_compare = st.button("🟢 開始差異比對 🟢", type="primary")
     else:
         start_compare = False
         st.info("請至少選擇一個 Key 欄位後，才能開始比對")
 
-    # =====================================================
+    # =========================
     # 比對執行
-    # =====================================================
+    # =========================
     if start_compare:
         with st.spinner("資料比對中，請稍候..."):
             t0 = time.time()
@@ -193,14 +223,12 @@ else:
 
             duration = round(time.time() - t0, 2)
 
-            download_filename = gen_download_filename(
-                base_name="Excel差異比對結果"
-            )
+            download_filename = gen_download_filename("Excel差異比對結果")
 
         st.success(f"比對完成（耗時 {duration} 秒）")
 
 # =========================================================
-# 下載區（一定在 button 區塊外）
+# 下載區
 # =========================================================
 if output and download_filename:
     st.download_button(
@@ -211,7 +239,7 @@ if output and download_filename:
     )
 
 # =========================================================
-# Footer（永遠顯示）
+# Footer
 # =========================================================
 st.markdown(
     """
@@ -223,7 +251,7 @@ st.markdown(
         color:#666;
         border-top:1px solid #e0e0e0;
     ">
-        © 2025 Roger＆Andy with GPT ｜ QQ資料製作小組 ｜ V2.1.2
+        © 2025 Roger＆Andy with GPT ｜ QQ資料製作小組 ｜ V2.1.3
     </div>
     """,
     unsafe_allow_html=True
