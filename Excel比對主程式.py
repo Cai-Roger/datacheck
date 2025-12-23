@@ -59,8 +59,6 @@ def check_password():
     # 統計：只算「有意義的動作」而非 rerun 次數
     if "compare_count" not in st.session_state:
         st.session_state.compare_count = 0
-    if "feedback_count" not in st.session_state:
-        st.session_state.feedback_count = 0
 
     # ===== 已登入 =====
     if st.session_state.authenticated:
@@ -114,10 +112,14 @@ def send_feedback_email(subject: str, body: str):
 def append_feedback_to_excel(row: dict):
     DATA_DIR.mkdir(parents=True, exist_ok=True)
 
-    cols = [
-        "time_tw", "name", "email", "message",
-        "app_version", "compare_count_session", "feedback_count_session"
-    ]
+cols = [
+    "time_tw",
+    "name",
+    "email",
+    "message",
+    "app_version",
+    "compare_count_session"
+]
 
     new_df = pd.DataFrame([[row.get(c, "") for c in cols]], columns=cols)
 
@@ -190,13 +192,9 @@ with st.sidebar:
             st.session_state.feedback_count += 1
             row = {
                 "time_tw": now_tw().strftime("%Y-%m-%d %H:%M:%S"),
-                "name": fb_name,
-                "email": fb_email,
-                "message": fb_msg,
-                "app_version": APP_VERSION,
-                "compare_count_session": st.session_state.compare_count,
-                "feedback_count_session": st.session_state.feedback_count,
+                "name": fb_name
             }
+
             try:
                 append_feedback_to_excel(row)
                 st.success("✅ 已收到回饋（已存檔）")
