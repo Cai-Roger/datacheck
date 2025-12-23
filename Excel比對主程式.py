@@ -192,7 +192,7 @@ with st.sidebar:
             st.session_state.feedback_count += 1
             row = {
                 "time_tw": now_tw().strftime("%Y-%m-%d %H:%M:%S"),
-                "name": fb_name
+                "name": fb_name,
             }
 
             try:
