@@ -1,139 +1,97 @@
 import streamlit as st
 import pandas as pd
 from pathlib import Path
-from zoneinfo import ZoneInfo
-from datetime import datetime
-from config import APP_NAME, APP_VERSION
-
-# =========================================================
-# 基本設定
-# =========================================================
-DATA_DIR = Path("data")
-FEEDBACK_XLSX = DATA_DIR / "feedback.xlsx"
-
-# =========================================================
-# 🔐 登入檢查（沿用主程式 session）
-# =========================================================
-if "authenticated" not in st.session_state or not st.session_state.authenticated:
-    st.warning("⚠️ 請先登入系統")
-    st.stop()
+from config import APP_VERSION
 
 # =========================================================
 # Page config
 # =========================================================
 st.set_page_config(
-    page_title="管理者頁面｜回饋列表",
+    page_title="管理者頁｜回饋列表",
     layout="wide"
 )
 
+# =========================================================
+# 🔐 管理者登入檢查
+# =========================================================
+def check_admin():
+    if "admin_authenticated" not in st.session_state:
+        st.session_state.admin_authenticated = False
+
+    if st.session_state.admin_authenticated:
+        return True
+
+    st.title("🔐 管理者登入")
+
+    pwd = st.text_input(
+        "請輸入管理者密碼",
+        type="password"
+    )
+
+    if st.button("登入"):
+        if pwd == st.secrets["admin"]["password"]:
+            st.session_state.admin_authenticated = True
+            st.rerun()
+        else:
+            st.error("❌ 管理者密碼錯誤")
+
+    return False
+
+
+# ❗ 未通過管理者驗證 → 停止
+if not check_admin():
+    st.stop()
+
+# =========================================================
+# Sidebar（管理者）
+# =========================================================
+with st.sidebar:
+    st.markdown("### 👤 管理者模式")
+    st.caption(f"Version: {APP_VERSION}")
+
+    if st.button("🔓 登出管理者"):
+        st.session_state.admin_authenticated = False
+        st.rerun()
+
+# =========================================================
+# 主畫面
+# =========================================================
 st.title("👤 管理者頁面｜回饋列表")
 st.caption(f"版本：{APP_VERSION}")
 
-# =========================================================
-# 讀取資料
-# =========================================================
+DATA_DIR = Path("data")
+FEEDBACK_XLSX = DATA_DIR / "feedback.xlsx"
+
 if not FEEDBACK_XLSX.exists():
-    st.info("目前尚無任何回饋資料")
-    st.stop()
+    st.warning("目前尚無任何回饋資料")
+else:
+    df = pd.read_excel(FEEDBACK_XLSX)
 
-df = pd.read_excel(FEEDBACK_XLSX)
+    st.success(f"共 {len(df)} 筆回饋")
 
-# =========================================================
-# 僅顯示指定欄位（紅框）
-# =========================================================
-DISPLAY_COLS = [
-    "time_tw",
-    "name",
-    "email",
-    "message",
-    "app_version",
-]
-
-DISPLAY_COLS = [c for c in DISPLAY_COLS if c in df.columns]
-df_view = df[DISPLAY_COLS].copy()
-
-# =========================================================
-# 基本資訊
-# =========================================================
-st.success(f"📊 目前共 {len(df_view)} 筆回饋")
-
-# =========================================================
-# 🔍 搜尋 / 排序工具列
-# =========================================================
-with st.expander("🔍 搜尋 / 排序"):
-    keyword = st.text_input("關鍵字（姓名 / Email / 內容）")
-    sort_order = st.radio(
-        "時間排序",
-        ["最新在前", "最舊在前"],
-        horizontal=True
-    )
-
-# =========================================================
-# 搜尋處理
-# =========================================================
-if keyword:
-    df_view = df_view[
-        df_view.astype(str).apply(
-            lambda r: r.str.contains(keyword, case=False, na=False).any(),
-            axis=1
-        )
+    # ✅ 依你要求：只保留紅框欄位
+    display_cols = [
+        "time_tw",
+        "name",
+        "email",
+        "message",
+        "app_version"
     ]
 
-# =========================================================
-# 排序處理
-# =========================================================
-if "time_tw" in df_view.columns:
-    df_view["__time"] = pd.to_datetime(df_view["time_tw"], errors="coerce")
-    df_view = df_view.sort_values(
-        "__time",
-        ascending=(sort_order == "最舊在前")
+    display_cols = [c for c in display_cols if c in df.columns]
+
+    st.dataframe(
+        df[display_cols],
+        use_container_width=True
     )
-    df_view = df_view.drop(columns="__time")
 
-# =========================================================
-# 顯示表格
-# =========================================================
-st.dataframe(
-    df_view,
-    use_container_width=True,
-    height=520
-)
-
-# =========================================================
-# ⬇️ 下載回饋資料
-# =========================================================
-st.markdown("---")
-
-def gen_admin_export_name():
-    ts = datetime.now(ZoneInfo("Asia/Taipei")).strftime("%Y%m%d_%H%M%S")
-    return f"feedback_admin_export_{ts}.xlsx"
-
-output = None
-with pd.ExcelWriter(
-    output := pd.ExcelWriter,
-    engine="xlsxwriter"
-):
-    pass  # just for editor hinting
-
-export_buf = None
-export_buf = pd.ExcelWriter
-
-buf = None
-buf = st.experimental_data_editor if False else None
-
-export = None
-from io import BytesIO
-export = BytesIO()
-
-with pd.ExcelWriter(export, engine="xlsxwriter") as writer:
-    df_view.to_excel(writer, sheet_name="Feedback", index=False)
-
-st.download_button(
-    "⬇️ 下載回饋資料 Excel",
-    data=export.getvalue(),
-    file_name=gen_admin_export_name(),
-    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-)
+    # 下載
+    st.download_button(
+        "📥 下載回饋 Excel",
+        data=df.to_excel(index=False, engine="openpyxl"),
+        file_name="feedback_export.xlsx",
+        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
 
 # =========================================================
 # Footer
@@ -148,7 +106,7 @@ st.markdown(
         color:#666;
         border-top:1px solid #e0e0e0;
     ">
-        © 2025 Roger＆Andy with GPT ｜ QQ資料製作小組 ｜ 管理者頁 {APP_VERSION}
+        © 2025 Roger＆Andy with GPT ｜ 管理者頁 ｜ {APP_VERSION}
     </div>
     """,
     unsafe_allow_html=True
