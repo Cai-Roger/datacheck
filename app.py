@@ -7,7 +7,7 @@ from zoneinfo import ZoneInfo
 from email.message import EmailMessage
 import smtplib
 from pathlib import Path
-from config import APP_NAME, APP_VERSION
+from config import APP_NAME, APP_VERSION, APP_FOOTER
 
 from compare_core import (
     clean_header_name,
