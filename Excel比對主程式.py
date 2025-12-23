@@ -124,8 +124,6 @@ def check_password():
     st.session_state.setdefault("authenticated", False)
     st.session_state.setdefault("last_active_ts", now)
     st.session_state.setdefault("warned", False)
-
-    # ✅ 本次登入比對次數（session）
     st.session_state.setdefault("compare_count_session", 0)
 
     # ===== 已登入 =====
@@ -137,20 +135,23 @@ def check_password():
 
     # ===== 尚未登入 =====
     st.title("🔐 系統登入")
+
     pwd = st.text_input("請輸入系統密碼", type="password")
 
     if st.button("登入"):
         auth_cfg = st.secrets.get("auth", None)
         if not auth_cfg or "password" not in auth_cfg:
             st.error("❌ 尚未設定 secrets：[auth].password")
-            return False
+            st.stop()
 
         if pwd == auth_cfg["password"]:
             st.session_state.authenticated = True
             st.session_state.last_active_ts = now
             st.session_state.warned = False
             st.session_state.compare_count_session = 0
-            return True
+
+            st.success("✅ 登入成功")
+            st.stop()   # ⭐ 關鍵：中斷這一輪，避免登入畫面殘留
         else:
             st.error("密碼錯誤")
 
