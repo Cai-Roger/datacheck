@@ -144,7 +144,6 @@ with st.sidebar:
 
     # ✅ 修正後的統計：不再用 run_count（rerun 次數）
     st.caption(f"🔁 本次登入｜比對執行次數：{st.session_state.compare_count}")
-    st.caption(f"✉️ 本次登入｜意見送出次數：{st.session_state.feedback_count}")
 
     now = time.time()
     remaining = SESSION_TIMEOUT_SECONDS - (now - st.session_state.last_active_ts)
