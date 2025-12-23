@@ -57,20 +57,23 @@ with col1:
 with col2:
     file_b = st.file_uploader("📤 上傳 Excel B", type=["xlsx"])
 
-# 提示訊息（但不 stop）
-if not file_a or not file_b:
+# =========================
+# 控制流程（重點）
+# =========================
+if file_a is None or file_b is None:
     st.info("請先上傳兩份 Excel")
 else:
-    # =========================
-    # 只有在兩份檔案都存在時，才做資料處理
-    # =========================
+    # ✅ 只有在兩個檔案都存在時，才會執行到這裡
     df_a = pd.read_excel(file_a)
     df_b = pd.read_excel(file_b)
 
     st.success(f"Excel A：{df_a.shape} | Excel B：{df_b.shape}")
 
-    # 👉 你後面所有 Key、比對、下載邏輯
-    # 👉 全部都放在這個 else 裡
+    # 👉 你後面所有：
+    # - Key 勾選
+    # - 比對
+    # - 匯出
+    # 全部都一定要放在這個 else 裡
 
 df_a = pd.read_excel(file_a)
 df_b = pd.read_excel(file_b)
