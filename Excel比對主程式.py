@@ -4,11 +4,11 @@ import time
 from io import BytesIO
 from datetime import datetime
 from zoneinfo import ZoneInfo
+from pathlib import Path
 from email.message import EmailMessage
 import smtplib
-from pathlib import Path
-from config import APP_NAME, APP_VERSION, APP_FOOTER
 
+from config import APP_NAME, APP_VERSION, APP_FOOTER
 from compare_core import (
     clean_header_name,
     build_key_map,
@@ -26,14 +26,11 @@ st.set_page_config(
 )
 
 # =========================================================
-# 登入與逾時設定
+# 基本設定
 # =========================================================
 SESSION_TIMEOUT_SECONDS = 30 * 60
 WARNING_SECONDS = 5 * 60
 
-# =========================================================
-# 回饋儲存路徑
-# =========================================================
 DATA_DIR = Path("data")
 FEEDBACK_XLSX = DATA_DIR / "feedback.xlsx"
 
@@ -56,7 +53,7 @@ def check_password():
     if "warned" not in st.session_state:
         st.session_state.warned = False
 
-    # ✅ Session 統計
+    # Session 統計與事件鎖
     if "compare_count" not in st.session_state:
         st.session_state.compare_count = 0
     if "compare_clicked" not in st.session_state:
@@ -87,23 +84,6 @@ def check_password():
 
 if not check_password():
     st.stop()
-
-# =========================================================
-# 寄送意見信（選配）
-# =========================================================
-def send_feedback_email(subject: str, body: str):
-    cfg = st.secrets["mail"]
-
-    msg = EmailMessage()
-    msg["Subject"] = subject
-    msg["From"] = f'{cfg.get("from_name","Feedback")} <{cfg["smtp_user"]}>'
-    msg["To"] = cfg["to_addr"]
-    msg.set_content(body)
-
-    with smtplib.SMTP(cfg["smtp_host"], int(cfg["smtp_port"])) as server:
-        server.starttls()
-        server.login(cfg["smtp_user"], cfg["smtp_password"])
-        server.send_message(msg)
 
 # =========================================================
 # 回饋寫入 Excel
@@ -141,7 +121,7 @@ with st.sidebar:
     remaining = SESSION_TIMEOUT_SECONDS - (now - st.session_state.last_active_ts)
 
     if remaining <= WARNING_SECONDS and remaining > 0 and not st.session_state.warned:
-        st.warning("⚠️ 登入即將逾時，請點擊「延長登入」")
+        st.warning("⚠️ 登入即將逾時，請點擊延長登入")
         st.session_state.warned = True
 
     if remaining <= 0:
@@ -157,9 +137,7 @@ with st.sidebar:
         st.session_state.authenticated = False
         st.rerun()
 
-    # =========================
-    # ✉️ 意見箱
-    # =========================
+    # 意見箱
     st.markdown("---")
     st.markdown("### ✉️ 意見箱")
 
@@ -182,16 +160,6 @@ with st.sidebar:
                 "compare_count_session": st.session_state.compare_count,
             }
             append_feedback_to_excel(row)
-
-            if "mail" in st.secrets:
-                try:
-                    send_feedback_email(
-                        "【Excel 比對程式｜意見回饋】",
-                        fb_msg
-                    )
-                except Exception:
-                    pass
-
             st.success("✅ 已收到回饋")
 
 # =========================================================
@@ -217,6 +185,7 @@ with col2:
 
 output = None
 download_filename = None
+duration = None
 
 # =========================================================
 # 主流程
@@ -224,6 +193,9 @@ download_filename = None
 if file_a and file_b:
     df_a = pd.read_excel(file_a)
     df_b = pd.read_excel(file_b)
+
+    # ✅ 檔案一上傳就顯示筆數
+    st.success(f"📄 Excel A 筆數：{len(df_a)} ｜ Excel B 筆數：{len(df_b)}")
 
     st.subheader("🔑 Key 欄位設定")
 
@@ -241,14 +213,19 @@ if file_a and file_b:
         default=default_keys
     )
 
+    # ===== 按鈕事件 =====
     if selected_keys:
         if st.button("🟢 開始差異比對 🟢", type="primary"):
             st.session_state.compare_clicked = True
 
-    # ===== 真正執行（只會跑一次）=====
+    # ===== 真正執行（只跑一次）=====
     if st.session_state.compare_clicked:
         st.session_state.compare_clicked = False
-        st.session_state.compare_count += 1   # ⭐ 唯一計次點
+
+        # ✅ 計次：就在這一行
+        st.session_state.compare_count += 1
+
+        t0 = time.time()
 
         with st.spinner("資料比對中，請稍候..."):
             key_cols_a = [df_a.columns.get_loc(k) for k in selected_keys]
@@ -275,12 +252,17 @@ if file_a and file_b:
             with pd.ExcelWriter(output, engine="xlsxwriter") as writer:
                 df_out.to_excel(writer, index=False)
 
+            duration = round(time.time() - t0, 2)
+
             download_filename = (
                 f"Excel比對結果_{now_tw().strftime('%Y%m%d_%H%M%S')}.xlsx"
             )
 
+        # ✅ 比對時間顯示
+        st.success(f"✅ 比對完成，耗時 {duration} 秒")
+
 # =========================================================
-# 下載
+# 下載區（不影響計次）
 # =========================================================
 if output:
     st.download_button(
