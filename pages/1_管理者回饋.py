@@ -3,11 +3,11 @@ import pandas as pd
 from pathlib import Path
 from zoneinfo import ZoneInfo
 from datetime import datetime
+from config import APP_NAME, APP_VERSION
 
 # =========================================================
 # 基本設定
 # =========================================================
-APP_VERSION = "V3.2.1"
 DATA_DIR = Path("data")
 FEEDBACK_XLSX = DATA_DIR / "feedback.xlsx"
 
