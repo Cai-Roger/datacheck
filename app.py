@@ -71,18 +71,6 @@ if not check_password():
 # Sidebar：登入狀態 / 剩餘時間 / 延長登入
 # =========================================================
 with st.sidebar:
-    # ⏱ JS 心跳刷新（每秒）
-    components.html(
-        """
-        <script>
-            setTimeout(function(){
-                window.parent.location.reload();
-            }, 1000);
-        </script>
-        """,
-        height=0,
-    )
-
     st.markdown("### 🟢 登入狀態")
 
     now = time.time()
