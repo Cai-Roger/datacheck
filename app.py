@@ -4,6 +4,8 @@ import time
 from io import BytesIO
 from datetime import datetime
 from zoneinfo import ZoneInfo
+from email.message import EmailMessage
+import smtplib
 
 from compare_core import (
     clean_header_name,
@@ -49,7 +51,6 @@ def check_password():
 
     # ===== 尚未登入 =====
     st.title("🔐 系統登入")
-
     pwd = st.text_input("請輸入系統密碼", type="password")
 
     if st.button("登入"):
@@ -57,6 +58,7 @@ def check_password():
             st.session_state.authenticated = True
             st.session_state.last_active_ts = now
             st.session_state.warned = False
+            st.session_state.run_count = 0   # 初始化執行次數
             st.rerun()
         else:
             st.error("密碼錯誤")
@@ -69,20 +71,45 @@ if not check_password():
     st.stop()
 
 # =========================================================
-# Sidebar：登入狀態 / 警告 / 操作
+# 系統執行次數（同一 session）
+# =========================================================
+if "run_count" not in st.session_state:
+    st.session_state.run_count = 0
+st.session_state.run_count += 1
+
+# =========================================================
+# 寄送意見信件
+# =========================================================
+def send_feedback_email(subject: str, body: str):
+    cfg = st.secrets["mail"]
+
+    msg = EmailMessage()
+    msg["Subject"] = subject
+    msg["From"] = f'{cfg.get("from_name","Feedback")} <{cfg["smtp_user"]}>'
+    msg["To"] = cfg["to_addr"]
+    msg.set_content(body)
+
+    with smtplib.SMTP(cfg["smtp_host"], int(cfg["smtp_port"])) as server:
+        server.starttls()
+        server.login(cfg["smtp_user"], cfg["smtp_password"])
+        server.send_message(msg)
+
+# =========================================================
+# Sidebar
 # =========================================================
 with st.sidebar:
     st.markdown("### 🟢 登入狀態")
+    st.caption(f"🧾 系統已執行次數（本次登入）：{st.session_state.run_count}")
 
     now = time.time()
     remaining = SESSION_TIMEOUT_SECONDS - (now - st.session_state.last_active_ts)
 
-    # ⚠️ 剩 5 分鐘警告一次
+    # ⚠️ 剩 5 分鐘只警告一次
     if remaining <= WARNING_SECONDS and remaining > 0 and not st.session_state.warned:
         st.warning("⚠️ 登入即將逾時，請點擊「延長登入」")
         st.session_state.warned = True
 
-    # ⛔ 已逾時 → 強制回登入
+    # ⛔ 已逾時
     if remaining <= 0:
         st.session_state.authenticated = False
         st.rerun()
@@ -97,10 +124,43 @@ with st.sidebar:
         st.session_state.authenticated = False
         st.rerun()
 
+    # =========================
+    # 意見箱
+    # =========================
+    st.markdown("---")
+    st.markdown("### ✉️ 意見箱")
+
+    with st.form("feedback_form", clear_on_submit=True):
+        fb_name = st.text_input("姓名 / 暱稱（選填）")
+        fb_email = st.text_input("聯絡信箱（選填）")
+        fb_msg = st.text_area("意見內容", height=120)
+        submitted = st.form_submit_button("📩 送出")
+
+    if submitted:
+        if not fb_msg.strip():
+            st.error("請先輸入意見內容")
+        else:
+            st.session_state.last_active_ts = time.time()
+            st.session_state.warned = False
+
+            try:
+                subject = "【QQ資料製作小組｜意見箱】新回饋"
+                body = (
+                    f"Name: {fb_name}\n"
+                    f"Email: {fb_email}\n"
+                    f"Time: {datetime.now(ZoneInfo('Asia/Taipei')).strftime('%Y-%m-%d %H:%M:%S')}\n"
+                    f"RunCount: {st.session_state.run_count}\n"
+                    f"\n--- Message ---\n{fb_msg}"
+                )
+                send_feedback_email(subject, body)
+                st.success("已送出，感謝你的回饋！")
+            except Exception as e:
+                st.error(f"寄送失敗：{e}")
+
 # =========================================================
 # 主畫面
 # =========================================================
-st.title("Excel 比對程式（Web V3.1.0 正式版）")
+st.title("Excel 比對程式（Web V3.1.1 正式版）")
 
 st.markdown("""
 ### 使用說明
@@ -146,9 +206,6 @@ else:
 
     st.success(f"Excel A：{df_a.shape} ｜ Excel B：{df_b.shape}")
 
-    # =========================
-    # Key 設定
-    # =========================
     st.subheader("🔑 Key 欄位設定")
 
     cols = list(df_a.columns)
@@ -162,9 +219,6 @@ else:
         default=default_keys
     )
 
-    # =========================
-    # Key 選完才顯示按鈕
-    # =========================
     if selected_keys:
         st.success(f"已選擇 Key：{', '.join(selected_keys)}")
         st.markdown("---")
@@ -173,9 +227,6 @@ else:
         start_compare = False
         st.info("請至少選擇一個 Key 欄位後，才能開始比對")
 
-    # =========================
-    # 比對執行
-    # =========================
     if start_compare:
         st.session_state.last_active_ts = time.time()
 
@@ -256,7 +307,7 @@ st.markdown(
         color:#666;
         border-top:1px solid #e0e0e0;
     ">
-        © 2025 Roger＆Andy with GPT ｜ QQ資料製作小組 ｜ V3.1.0
+        © 2025 Roger＆Andy with GPT ｜ QQ資料製作小組 ｜ V3.1.1
     </div>
     """,
     unsafe_allow_html=True
