@@ -55,7 +55,7 @@ st.set_page_config(
 
 # Sidebar 登出
 with st.sidebar:
-    st.markdown("### 🔐 登入狀態")
+    st.markdown("### 🟢 登入狀態")
     if st.button("🔓 登出"):
         st.session_state.authenticated = False
         st.rerun()
@@ -223,7 +223,7 @@ st.markdown(
         color:#666;
         border-top:1px solid #e0e0e0;
     ">
-        © 2025 Cai-Roger ｜ Excel 比對程式 ｜ V2.1.2
+        © 2025 Roger＆Andy with GPT ｜ QQ資料製作小組 ｜ V2.1.2
     </div>
     """,
     unsafe_allow_html=True
