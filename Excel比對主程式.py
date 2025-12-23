@@ -112,14 +112,14 @@ def send_feedback_email(subject: str, body: str):
 def append_feedback_to_excel(row: dict):
     DATA_DIR.mkdir(parents=True, exist_ok=True)
 
-cols = [
-    "time_tw",
-    "name",
-    "email",
-    "message",
-    "app_version",
-    "compare_count_session"
-]
+    cols = [
+        "time_tw",
+        "name",
+        "email",
+        "message",
+        "app_version",
+        "compare_count_session"
+    ]
 
     new_df = pd.DataFrame([[row.get(c, "") for c in cols]], columns=cols)
 
