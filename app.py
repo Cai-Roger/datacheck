@@ -57,9 +57,18 @@ with col1:
 with col2:
     file_b = st.file_uploader("📤 上傳 Excel B", type=["xlsx"])
 
-if not file_a or not file_b:
+proceed = True
+
+if not file_a or not file_b:   # 如果你 B 已改多檔：not file_bs
     st.info("請先上傳兩份 Excel")
-    st.stop()
+    proceed = False
+
+if proceed:
+    df_a = pd.read_excel(file_a)
+    df_b = pd.read_excel(file_b)  # 多檔合併就換成你的 concat 版本
+    st.success(f"Excel A：{df_a.shape} | Excel B：{df_b.shape}")
+
+    # 後面所有 Key 設定、比對、下載…都放在這個區塊內
 
 df_a = pd.read_excel(file_a)
 df_b = pd.read_excel(file_b)
@@ -166,6 +175,12 @@ if output and download_filename:
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
 
-from footer import render_footer
-
-render_footer()
+st.markdown(
+    """
+    <div style="margin-top:40px;padding:12px 0;text-align:center;
+                font-size:13px;color:#666;border-top:1px solid #e0e0e0;">
+        © 2025 Cai-Roger ｜ Excel 比對程式 ｜ V2.1.2
+    </div>
+    """,
+    unsafe_allow_html=True
+)
