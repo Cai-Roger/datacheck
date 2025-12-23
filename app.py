@@ -57,52 +57,39 @@ with col1:
 with col2:
     file_b = st.file_uploader("📤 上傳 Excel B", type=["xlsx"])
 
-# =========================
-# 控制流程（重點）
-# =========================
 if file_a is None or file_b is None:
     st.info("請先上傳兩份 Excel")
+
 else:
-    # ✅ 只有在兩個檔案都存在時，才會執行到這裡
+    # =========================
+    # 這裡開始 df_a / df_b 才存在
+    # =========================
     df_a = pd.read_excel(file_a)
     df_b = pd.read_excel(file_b)
 
     st.success(f"Excel A：{df_a.shape} | Excel B：{df_b.shape}")
 
-    # 👉 你後面所有：
-    # - Key 勾選
-    # - 比對
-    # - 匯出
-    # 全部都一定要放在這個 else 裡
+    # =========================
+    # Key 欄位設定（一定要在 else 裡）
+    # =========================
+    st.subheader("🔑 Key 欄位設定")
 
+    cols = list(df_a.columns)
+    default_keys = [c for c in cols if clean_header_name(c) in {"PLNNR", "VORNR"}]
+    if not default_keys:
+        default_keys = cols[:2]
 
-# =========================
-# Key 勾選
-# =========================
-st.subheader("🔑 Key 欄位設定")
+    selected_keys = st.multiselect(
+        "選擇 Key 欄位（可多選）",
+        options=cols,
+        default=default_keys
+    )
 
-cols = list(df_a.columns)
-default_keys = [c for c in cols if clean_header_name(c) in {"PLNNR", "VORNR"}]
-if not default_keys:
-    default_keys = cols[:2]
-
-selected_keys = st.multiselect(
-    "選擇 Key 欄位（可多選）",
-    options=cols,
-    default=default_keys
-)
-
-if not selected_keys:
-    st.error("請至少選擇一個 Key 欄位")
-    st.stop()
-
-missing = [k for k in selected_keys if k not in df_b.columns]
-if missing:
-    st.error(f"Excel B 缺少 Key 欄位：{missing}")
-    st.stop()
-
-key_cols_a = [df_a.columns.get_loc(k) for k in selected_keys]
-key_cols_b = [df_b.columns.get_loc(k) for k in selected_keys]
+    if not selected_keys:
+        st.warning("請至少選擇一個 Key 欄位")
+    else:
+        # 👉 後續比對邏輯全部在這裡
+        pass
 
 # =========================
 # 比對執行
