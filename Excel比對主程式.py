@@ -169,7 +169,7 @@ with st.sidebar:
 
     # 系統累積次數（持久化）
     total_compare = get_total_compare_count()
-    st.caption(f"📊 系統累積比對次數：{total_compare}")
+    st.caption(f"📊 {APP_VERSION}版 系統累積比對次數：{total_compare}")
     st.caption(f"🔁 本次登入比對次數：{st.session_state.compare_count_session}")
 
     # 逾時警告（剩 5 分鐘顯示一次）
