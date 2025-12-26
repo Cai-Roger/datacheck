@@ -134,7 +134,7 @@ def check_password():
         return True
 
     # ===== 尚未登入 =====
-    st.title("🔐 Excel比對程式｜系統登入")
+    st.title("🔐 Excel比對程式_{APP_VERSION}｜系統登入")
 
     pwd = st.text_input("請輸入系統密碼", type="password")
 
