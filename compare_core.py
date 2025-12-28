@@ -6,34 +6,19 @@ import pandas as pd
 
 def normalize_raw_value(v):
     """
-    嚴格模式：
-    - NaN / None -> 空字串
-    - 保留原始字串內容（不 strip、不 replace）
+    嚴格模式（顯示用 & 比對用）：
+    - None / pandas NaN → 空字串
+    - 其他 → 原樣轉成字串
     """
     if v is None or pd.isna(v):
         return ""
     return str(v)
 
 
-def visualize_whitespace(s: str) -> str:
-    """
-    將不可見字元可視化（僅在真的有內容時）
-    """
-    if s is None or s == "":
-        return ""
-
-    s = str(s)
-    return (
-        s.replace("\r", "␍")
-         .replace("\t", "⇥")
-         .replace("\n", "↵\n")
-         .replace(" ", "␣")
-    )
-
-
 def values_equal_strict(a, b) -> bool:
     """
-    嚴格比對（含空白/換行/tab）
+    嚴格比對（包含空白 / 換行 / tab）
+    但 NaN / None 視為空字串
     """
     return normalize_raw_value(a) == normalize_raw_value(b)
 
@@ -43,6 +28,9 @@ def values_equal_strict(a, b) -> bool:
 # =========================
 
 def clean_header_name(name) -> str:
+    """
+    僅用於 Key 預設推測，不影響資料內容
+    """
     if name is None:
         return ""
     s = str(name).strip().upper()
@@ -55,6 +43,9 @@ def clean_header_name(name) -> str:
 # =========================
 
 def normalize_key_value(v):
+    """
+    Key 欄位允許寬鬆處理（去前後空白）
+    """
     if v is None or pd.isna(v):
         return ""
     return str(v).strip()
@@ -65,6 +56,9 @@ def make_key_tuple(row, key_cols):
 
 
 def build_key_map(df: pd.DataFrame, key_cols: list[int]):
+    """
+    回傳 dict: key_tuple -> list[row_index]
+    """
     key_map = {}
     for idx, row in df.iterrows():
         k = make_key_tuple(row, key_cols)
@@ -73,6 +67,9 @@ def build_key_map(df: pd.DataFrame, key_cols: list[int]):
 
 
 def count_duplicate_keys(df: pd.DataFrame, key_cols: list[int]) -> int:
+    """
+    回傳重複 key 的列數（不含第一筆）
+    """
     m = build_key_map(df, key_cols)
     dup = 0
     for idxs in m.values():
@@ -122,9 +119,15 @@ def diff_directional(
     map_src: dict,
     map_tgt: dict,
     key_cols_src: list[int],
-    src_label: str,
-    tgt_label: str
+    src_label: str,  # "A" or "B"
+    tgt_label: str   # "B" or "A"
 ):
+    """
+    從 src 角度比對到 tgt：
+    - Key 不存在 → 一筆差異
+    - Key 存在 → 逐欄位嚴格比對
+    """
+
     common_cols = [c for c in df_src.columns if c in df_tgt.columns]
     key_names = [df_src.columns[i] for i in key_cols_src]
     compare_cols = [c for c in common_cols if c not in key_names]
@@ -138,6 +141,7 @@ def diff_directional(
         key_t = make_key_tuple(row_src, key_cols_src)
         key_out = list(key_t)
 
+        # Key 不存在
         if key_t not in map_tgt:
             missing_keys.append(key_t)
             rows.append(
@@ -160,11 +164,8 @@ def diff_directional(
             b_val = row_tgt[col]
 
             if not values_equal_strict(a_val, b_val):
-                a_norm = normalize_raw_value(a_val)
-                b_norm = normalize_raw_value(b_val)
-
-                a_disp = visualize_whitespace(a_norm)
-                b_disp = visualize_whitespace(b_norm)
+                a_disp = normalize_raw_value(a_val)
+                b_disp = normalize_raw_value(b_val)
 
                 rows.append(
                     key_out + [
