@@ -33,12 +33,16 @@ def gen_download_filename(base_name: str):
     return f"{base_name}_{ts}.xlsx"
 
 def clean_display_value(v):
-    """移除可視化空白符號與 <NaN>"""
-    if v is None:
+    """
+    顯示用清洗（只影響顯示）：
+    1) 原值如果真的是空（NaN/None）=> 顯示空白
+    2) 如果原值是字串 '<NaN>'（使用者真的打的）=> 保留顯示 '<NaN>'
+    3) 不顯示可視化空白符號：␣ ⇥ ␍ ↵
+    """
+    if v is None or (isinstance(v, float) and pd.isna(v)) or pd.isna(v):
         return ""
+
     s = str(v)
-    if s == "<NaN>":
-        return ""
     return (
         s.replace("␣", " ")
          .replace("⇥", "")
