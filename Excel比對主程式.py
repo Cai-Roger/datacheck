@@ -23,7 +23,7 @@ st.set_page_config(
 )
 
 # =========================================================
-# 工具：台灣時間
+# 工具
 # =========================================================
 def now_tw():
     return datetime.now(ZoneInfo("Asia/Taipei"))
@@ -31,6 +31,20 @@ def now_tw():
 def gen_download_filename(base_name: str):
     ts = now_tw().strftime("%Y%m%d_%H%M%S")
     return f"{base_name}_{ts}.xlsx"
+
+def clean_display_value(v):
+    """移除可視化空白符號與 <NaN>"""
+    if v is None:
+        return ""
+    s = str(v)
+    if s == "<NaN>":
+        return ""
+    return (
+        s.replace("␣", " ")
+         .replace("⇥", "")
+         .replace("␍", "")
+         .replace("↵", "\n")
+    )
 
 # =========================================================
 # 主畫面
@@ -40,7 +54,7 @@ st.title(f"Excel 比對程式（Web {APP_VERSION}）")
 st.markdown("""
 ### 使用說明
 1. 上傳 Excel A、Excel B  
-2. 選擇 Key 欄位（可多選）  
+2. 選擇 Key 欄位  
 3. 點擊「開始差異比對」  
 """)
 
@@ -48,7 +62,6 @@ st.markdown("""
 # 上傳檔案
 # =========================================================
 col1, col2 = st.columns(2)
-
 with col1:
     file_a = st.file_uploader("📤 上傳 Excel A", type=["xlsx"])
 with col2:
@@ -58,26 +71,18 @@ if not file_a or not file_b:
     st.info("請先上傳兩份 Excel")
     st.stop()
 
-# =========================================================
-# 讀取資料
-# =========================================================
 df_a = pd.read_excel(file_a)
 df_b = pd.read_excel(file_b)
 
 st.success(f"A：{df_a.shape[0]} 筆 ｜ B：{df_b.shape[0]} 筆")
 
 # =========================================================
-# Key 欄位設定
+# Key 設定
 # =========================================================
 st.subheader("🔑 Key 欄位設定")
 
 cols = list(df_a.columns)
-
-default_keys = [
-    c for c in cols
-    if clean_header_name(c) in {"PLNNR", "VORNR", "MASTER_MATERIAL"}
-]
-
+default_keys = [c for c in cols if clean_header_name(c) in {"PLNNR", "VORNR"}]
 if not default_keys:
     default_keys = cols[:1]
 
@@ -91,25 +96,18 @@ if not selected_keys:
     st.warning("請至少選擇一個 Key 欄位")
     st.stop()
 
-missing = [k for k in selected_keys if k not in df_b.columns]
-if missing:
-    st.error(f"Excel B 缺少 Key 欄位：{missing}")
-    st.stop()
-
 st.markdown("---")
 
 # =========================================================
 # 開始比對
 # =========================================================
-start = st.button("🟢 開始差異比對", type="primary")
-
-if not start:
+if not st.button("🟢 開始差異比對", type="primary"):
     st.stop()
 
 t0 = time.time()
 
 # =========================================================
-# Key map / 重複 Key
+# Key map / 重複
 # =========================================================
 key_cols_a = [df_a.columns.get_loc(k) for k in selected_keys]
 key_cols_b = [df_b.columns.get_loc(k) for k in selected_keys]
@@ -126,15 +124,10 @@ dup_b = count_duplicate_keys(df_b, key_cols_b)
 df_col_diff = build_column_diff(df_a, df_b)
 
 # =========================================================
-# 資料差異（嚴格）
+# 嚴格差異
 # =========================================================
-a_rows, _, _, _ = diff_directional(
-    df_a, df_b, map_a, map_b, key_cols_a, "A", "B"
-)
-
-b_rows, _, _, _ = diff_directional(
-    df_b, df_a, map_b, map_a, key_cols_b, "B", "A"
-)
+a_rows, _, _, _ = diff_directional(df_a, df_b, map_a, map_b, key_cols_a, "A", "B")
+b_rows, _, _, _ = diff_directional(df_b, df_a, map_b, map_a, key_cols_b, "B", "A")
 
 key_headers = [f"KEY_{i+1}" for i in range(len(selected_keys))]
 headers = key_headers + ["差異欄位", "A值", "B值", "差異來源"]
@@ -148,6 +141,11 @@ df_b_to_a = (
     if b_rows else pd.DataFrame(columns=headers)
 )
 
+# 👉 顯示清洗（只影響顯示）
+for df in (df_a_to_b, df_b_to_a):
+    for c in df.columns:
+        df[c] = df[c].map(clean_display_value)
+
 # =========================================================
 # Summary
 # =========================================================
@@ -160,7 +158,7 @@ df_summary = pd.DataFrame([
 ], columns=["項目", "值1", "值2", "值3", "值4"])
 
 # =========================================================
-# 匯出 Excel
+# 匯出
 # =========================================================
 output = BytesIO()
 with pd.ExcelWriter(output, engine="xlsxwriter") as writer:
@@ -170,7 +168,6 @@ with pd.ExcelWriter(output, engine="xlsxwriter") as writer:
     df_b_to_a.to_excel(writer, "B_to_A", index=False)
 
 duration = round(time.time() - t0, 2)
-
 st.success(f"比對完成（耗時 {duration} 秒）")
 
 st.download_button(
